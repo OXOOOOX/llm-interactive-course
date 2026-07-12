@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三课：Transformer — 模型如何"思考"</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #22d3ee;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(34,211,238,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(34,211,238,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '🧠'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Attention heatmap ---- */
+  .attn-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .attn-demo h3 { font-size: 18px; margin-bottom: 12px; }
+  .attn-grid-wrap { overflow-x: auto; }
+  .attn-grid {
+    display: grid; gap: 2px; margin: 16px auto; width: fit-content;
+  }
+  .attn-cell {
+    width: 54px; height: 54px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: #fff;
+    transition: all 0.3s;
+  }
+  .attn-cell:hover { transform: scale(1.15); z-index: 2; }
+  .attn-label {
+    font-size: 13px; font-weight: 600; text-align: center;
+    padding: 6px; color: var(--text-dim);
+  }
+  .attn-label.row-label { text-align: right; padding-right: 12px; }
+  .attn-controls {
+    display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .attn-controls button {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-dim); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .attn-controls button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+  .attn-controls button:hover { border-color: var(--accent); }
+
+  /* ---- Multi-head demo ---- */
+  .mh-demo {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0;
+  }
+  .mh-demo h3 { font-size: 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .head-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .head-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; text-align: center; transition: all 0.3s;
+  }
+  .head-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .head-card .head-icon { font-size: 28px; margin-bottom: 8px; }
+  .head-card .head-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .head-card .head-desc { font-size: 12px; color: var(--text-dim); }
+
+  /* ---- Transformer block visual ---- */
+  .block-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; display: flex; flex-direction: column; align-items: center;
+  }
+  .block-layer {
+    width: 280px; padding: 14px 20px; border-radius: 10px;
+    text-align: center; font-size: 14px; font-weight: 600;
+    margin: 4px 0; position: relative;
+  }
+  .block-arrow { color: var(--text-dim); font-size: 18px; margin: 2px 0; }
+  .block-add {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; margin: 4px 0;
+  }
+  .block-residual {
+    position: absolute; right: -50px; top: 50%; transform: translateY(-50%);
+    font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 120px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(34,211,238,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(34,211,238,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    .head-cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第三课 · 模型架构</div>
+  <h1>Transformer<br><span>模型如何"思考"</span></h1>
+  <p>前两课我们把文字变成了向量。这节课，我们终于要揭开大模型最核心的"大脑"——Transformer 是如何让 token 之间互相交流、理解上下文、并最终做出预测的。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 回顾 ==================== -->
+<section>
+  <h2><span class="num">0</span> 快速回顾：我们在哪里？</h2>
+
+  <p>前两课中，我们学会了 Tokenization（文字→ID）和 Embedding（ID→向量）。现在这些向量已经准备好了，要送入模型的核心——Transformer 网络。这是真正产生"智能"的地方。</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">📄</div>
+      <div class="label" style="opacity:0.4">原始文本</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🔤</div>
+      <div class="label" style="opacity:0.4">Tokenization</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">📐</div>
+      <div class="label" style="opacity:0.4">Embedding</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(34,211,238,0.3)">🧠</div>
+      <div class="label" style="color:var(--accent)">Transformer</div>
+      <div class="sublabel">本课重点 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.5">🎯</div>
+      <div class="label" style="opacity:0.5">预测下一个 Token</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+  </div>
+
+  <p>本课的核心问题是：<span class="hl">一堆孤立的向量，怎么变成"理解了上下文"的表示？</span>答案就是 Transformer 中的 <span class="hl">Self-Attention（自注意力）</span>机制。</p>
+</section>
+
+<!-- ==================== 1. 核心问题 ==================== -->
+<section>
+  <h2><span class="num">1</span> 核心问题：为什么 Embedding 不够？</h2>
+
+  <p>经过 Embedding 查找后，每个 token 都有了一个向量。但这些向量有一个致命缺陷：<span class="hl-orange">它们之间是完全孤立的</span>。</p>
+
+  <p>举个例子，考虑这两句话：</p>
+
+  <div class="code-block"><span class="comment"># 同一个字"苹果"，但语义完全不同：</span>
+
+<span class="string">"我买了一个苹果吃"</span>     →  水果 🍎
+<span class="string">"我买了一个苹果手机"</span>   →  品牌 📱
+
+<span class="comment"># Embedding 查找表只能给"苹果"一个固定向量</span>
+<span class="comment"># 它不知道旁边是"吃"还是"手机"</span></div>
+
+  <p>问题很明显：<span class="hl">一个词的真正含义取决于它周围的上下文</span>。光靠查表得到的固定向量是不够的。模型需要一种方法，让每个 token 能"看到"周围的 token，然后根据上下文动态调整自己的表示。</p>
+
+  <div class="story-card">
+    <h3>一个类比：课堂讨论</h3>
+    <p>想象一个教室里有 10 个学生（= 10 个 token），每人手里有一张卡片写着自己的初始观点（= Embedding 向量）。</p>
+    <p>如果每个人只看自己的卡片就直接作答——结果肯定很差。</p>
+    <p>但如果允许他们<strong>互相讨论</strong>呢？每个人可以看看其他人的卡片，根据相关性决定要从谁那里吸收多少信息，然后更新自己的答案。</p>
+    <p>讨论结束后，每个人的最终观点（= 更新后的向量）已经<span class="hl">融合了整个上下文的信息</span>。</p>
+    <p><strong>Self-Attention 就是这个"讨论"过程的数学实现。</strong></p>
+  </div>
+</section>
+
+<!-- ==================== 2. Self-Attention ==================== -->
+<section>
+  <h2><span class="num">2</span> Self-Attention：让 Token 互相"对话"</h2>
+
+  <p>Self-Attention 的核心思想用一句话概括就是：<span class="hl">每个 token 给序列中的其他所有 token 打一个"相关性分数"，然后按照分数加权求和，得到融合了上下文信息的新向量</span>。</p>
+
+  <p>让我们一步步拆解这个过程。假设输入是 "猫 坐在 垫子 上"（4 个 token）：</p>
+
+  <p><strong>Step 1：生成 Q、K、V 三个向量</strong></p>
+  <p>每个 token 的 Embedding 向量通过三个不同的线性变换，生成三个新向量：</p>
+
+  <div class="code-block"><span class="comment"># 对于每个 token，生成三个"角色"：</span>
+
+<span class="keyword">Query (Q)</span> = "我在找什么信息？"     <span class="comment"># 相当于"提问"</span>
+<span class="keyword">Key   (K)</span> = "我能提供什么信息？"   <span class="comment"># 相当于"标签/关键词"</span>
+<span class="keyword">Value (V)</span> = "我实际包含的信息"     <span class="comment"># 相当于"内容"</span>
+
+<span class="comment"># 计算方式：三个权重矩阵 W_Q, W_K, W_V</span>
+Q = embedding × W_Q    <span class="comment"># (d_model → d_k)</span>
+K = embedding × W_K    <span class="comment"># (d_model → d_k)</span>
+V = embedding × W_V    <span class="comment"># (d_model → d_v)</span></div>
+
+  <div class="blockquote">
+    <strong>直觉类比：</strong>想象你在图书馆找书。<br>
+    你脑中的问题是 <strong>Query</strong>（"我想找关于猫的书"）。<br>
+    每本书的封面标题是 <strong>Key</strong>（"猫的生活习性""狗的训练方法""量子力学导论"……）。<br>
+    书的内容是 <strong>Value</strong>。<br><br>
+    你拿自己的 Query 和每本书的 Key 做比较（点积），得到相关性分数。分数高的书你多看，分数低的略过。最终你获得的知识 = Value 的加权求和。
+  </div>
+
+  <p><strong>Step 2：计算注意力分数</strong></p>
+  <p>用每个 token 的 Query 去和所有 token 的 Key 做<span class="hl">点积</span>。点积越大 = 越相关。</p>
+
+  <div class="code-block"><span class="comment"># "猫"的 Query 和所有 token 的 Key 做点积：</span>
+
+score(<span class="string">猫</span>, <span class="string">猫</span>)   = Q_猫 · K_猫  = <span class="number">3.2</span>   <span class="comment"># 自己和自己比较相关</span>
+score(<span class="string">猫</span>, <span class="string">坐在</span>) = Q_猫 · K_坐在 = <span class="number">1.5</span>   <span class="comment"># 动作，有点相关</span>
+score(<span class="string">猫</span>, <span class="string">垫子</span>) = Q_猫 · K_垫子 = <span class="number">2.8</span>   <span class="comment"># "猫"和"垫子"高度相关！</span>
+score(<span class="string">猫</span>, <span class="string">上</span>)   = Q_猫 · K_上  = <span class="number">0.3</span>   <span class="comment"># 虚词，不太相关</span>
+
+<span class="comment"># 除以 √d_k 做缩放（防止点积值过大导致梯度消失）</span>
+scaled_scores = scores / √d_k</div>
+
+  <p><strong>Step 3：Softmax 变成权重</strong></p>
+  <p>对分数做 Softmax（和上节课学的完全一样），让它们变成 0~1 之间的权重，总和为 1：</p>
+
+  <div class="code-block">weights = softmax([<span class="number">3.2</span>, <span class="number">1.5</span>, <span class="number">2.8</span>, <span class="number">0.3</span>]) = [<span class="number">0.38</span>, <span class="number">0.07</span>, <span class="number">0.25</span>, <span class="number">0.02</span>]
+<span class="comment">#                  猫↑   坐在↑  垫子↑   上↑</span>
+<span class="comment"># 注意：真实模型这里会 normalize 到更合理的分布</span></div>
+
+  <p><strong>Step 4：加权求和得到输出</strong></p>
+  <p>用这些权重对所有 token 的 Value 向量做加权求和，得到"猫"这个位置融合了上下文后的新表示：</p>
+
+  <div class="code-block">output_猫 = <span class="number">0.38</span> × V_猫 + <span class="number">0.07</span> × V_坐在 + <span class="number">0.25</span> × V_垫子 + <span class="number">0.02</span> × V_上
+
+<span class="comment"># 现在"猫"的向量已经吸收了来自"垫子"的信息！</span>
+<span class="comment"># 模型知道了"这是一只坐在垫子上的猫"而不仅仅是一个孤立的"猫"字</span></div>
+
+  <p>用一个公式总结：</p>
+  <div class="code-block" style="text-align:center;font-size:16px;padding:24px">
+<span class="keyword">Attention(Q, K, V)</span> = softmax(Q × K<sup>T</sup> / √d<sub>k</sub>) × V</div>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>核心直觉：</strong>Self-Attention 本质就是一个<strong>"智能加权平均"</strong>。普通的平均会平等对待所有 token，而 Self-Attention 会根据相关性动态分配权重——相关的 token 权重大，不相关的接近零。这让每个位置的向量都能"看到全局"，但只从真正相关的位置吸收信息。</p>
+  </div>
+</section>
+
+<!-- ==================== 3. 注意力可视化 ==================== -->
+<section>
+  <h2><span class="num">3</span> 可视化：注意力热力图</h2>
+
+  <p>注意力权重可以用热力图来可视化。下面的矩阵中，每一行代表一个 token 作为 Query 时，它对其他 token 分配的注意力权重。颜色越亮 = 权重越高 = 越"关注"。</p>
+
+  <p>点击不同的句子切换，观察注意力分配的模式：</p>
+
+  <div class="attn-demo">
+    <h3>🔍 注意力权重热力图（模拟）</h3>
+    <div class="attn-controls" id="attn-controls"></div>
+    <div class="attn-grid-wrap">
+      <div id="attn-display"></div>
+    </div>
+    <p id="attn-explain" style="font-size:13px;color:var(--text-dim);margin-top:12px"></p>
+  </div>
+
+  <p>从这些热力图中可以观察到几个有趣的模式：</p>
+  <p><span class="hl">1. 代词解析：</span>"它"会把大部分注意力给前面的名词（"猫"），这说明模型在学习指代关系。</p>
+  <p><span class="hl">2. 修饰关系：</span>形容词会关注它修饰的名词；动词会关注它的主语和宾语。</p>
+  <p><span class="hl">3. 自身注意力：</span>每个 token 通常对自己也有不小的注意力——保留"自身原有信息"也是有意义的。</p>
+</section>
+
+<!-- ==================== 4. Causal Masking ==================== -->
+<section>
+  <h2><span class="num">4</span> 因果遮罩：不能"偷看未来"</h2>
+
+  <p>你可能注意到了一个问题：在生成文本时，模型是<strong>逐字生成</strong>的。当它在预测第 3 个 token 时，第 4、5、6……个 token 还不存在。如果 Self-Attention 允许"看到后面的 token"，那在训练时模型就能"偷看答案"了——这完全违背了 Next-Token Prediction 的训练目标。</p>
+
+  <p>解决方案是 <span class="hl">因果遮罩（Causal Mask）</span>：在计算注意力分数时，把当前位置之后的所有位置强制设为负无穷（-∞），Softmax 之后这些位置的权重就变成了 0。</p>
+
+  <div class="code-block"><span class="comment"># 因果遮罩的效果（✓ = 可以看到，✗ = 被遮住）</span>
+<span class="comment">#        看→  token1  token2  token3  token4</span>
+<span class="comment"># token1       ✓       ✗       ✗       ✗     ← 只能看自己</span>
+<span class="comment"># token2       ✓       ✓       ✗       ✗     ← 能看到前 2 个</span>
+<span class="comment"># token3       ✓       ✓       ✓       ✗     ← 能看到前 3 个</span>
+<span class="comment"># token4       ✓       ✓       ✓       ✓     ← 能看到所有（它是最后一个）</span>
+
+<span class="comment"># 实现方式：在 softmax 之前，给上三角位置加 -∞</span>
+scores[i][j] = <span class="number">-∞</span>  <span class="keyword">if</span> j > i   <span class="comment"># j 在 i 后面 → 遮住</span></div>
+
+  <div class="insight-box blue">
+    <span class="icon">🎭</span>
+    <p><strong>一个重要区别：</strong>GPT 这类"生成式"模型用因果遮罩（只能看前面），叫做 <strong>Decoder-only</strong> 架构。而 BERT 这类"理解式"模型不用遮罩（每个 token 都能看到全文），叫做 <strong>Encoder</strong> 架构。当前主流大模型（GPT-4、Claude、LLaMA、DeepSeek）全部是 Decoder-only——因为生成能力是最通用的。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. Multi-Head Attention ==================== -->
+<section>
+  <h2><span class="num">5</span> Multi-Head Attention：从多个角度"看"</h2>
+
+  <p>一组 Q/K/V 只能学习一种"注意力模式"。但语言中的关系是多维度的——一个词可能和另一个词在<strong>语法</strong>上相关，同时和第三个词在<strong>语义</strong>上相关。一个"注意力头"很难同时关注多种关系。</p>
+
+  <p>解决方案：<span class="hl">多头注意力（Multi-Head Attention）</span>——并行运行多个独立的 Attention 计算，每个"头"可以学习关注不同类型的关系。最后把所有头的输出拼接起来。</p>
+
+  <div class="mh-demo">
+    <h3>🔮 多头注意力：不同的头关注不同的事</h3>
+    <p style="font-size:14px;color:var(--text-dim);margin-bottom:16px">每个"头"有自己独立的 W_Q, W_K, W_V，学习到不同的注意力模式。下面展示了研究人员在真实模型中发现的几种典型模式：</p>
+    <div class="head-cards">
+      <div class="head-card">
+        <div class="head-icon">📝</div>
+        <div class="head-title">语法头</div>
+        <div class="head-desc">关注主谓关系<br>"猫"→"坐在"</div>
+      </div>
+      <div class="head-card">
+        <div class="head-icon">↩️</div>
+        <div class="head-title">指代头</div>
+        <div class="head-desc">解析代词指向<br>"它"→"猫"</div>
+      </div>
+      <div class="head-card">
+        <div class="head-icon">📍</div>
+        <div class="head-title">位置头</div>
+        <div class="head-desc">关注相邻 token<br>局部语法结构</div>
+      </div>
+      <div class="head-card">
+        <div class="head-icon">🌐</div>
+        <div class="head-title">语义头</div>
+        <div class="head-desc">关注语义相关词<br>"苹果"→"水果"</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="comment"># Multi-Head Attention 的计算过程：</span>
+
+<span class="comment"># GPT-3 有 96 个注意力头，每个头的维度 = 12288 / 96 = 128</span>
+d_model = <span class="number">12288</span>    <span class="comment"># 总维度</span>
+n_heads = <span class="number">96</span>       <span class="comment"># 头数</span>
+d_head  = <span class="number">128</span>      <span class="comment"># 每个头的维度 = d_model / n_heads</span>
+
+<span class="comment"># 每个头独立计算：</span>
+head_1 = Attention(Q_1, K_1, V_1)   <span class="comment"># 形状: (seq_len, 128)</span>
+head_2 = Attention(Q_2, K_2, V_2)
+...
+head_96 = Attention(Q_96, K_96, V_96)
+
+<span class="comment"># 拼接所有头的输出：</span>
+concat = [head_1 ; head_2 ; ... ; head_96]   <span class="comment"># 形状: (seq_len, 12288)</span>
+
+<span class="comment"># 再过一个线性层混合各头的信息：</span>
+output = concat × W_O   <span class="comment"># 形状: (seq_len, 12288)</span></div>
+
+  <div class="insight-box purple">
+    <span class="icon">🧩</span>
+    <p><strong>为什么用多个小头而不是一个大头？</strong>假设总维度是 768。一个头用 768 维做注意力，只能学一种关注模式。12 个 64 维的头，能同时学 12 种不同的模式。这就像 12 个不同的"专家"各自从不同角度分析同一句话，最后综合所有人的意见——比一个"全能专家"效果好得多。而且计算量是一样的！</p>
+  </div>
+</section>
+
+<!-- ==================== 6. Position Encoding ==================== -->
+<section>
+  <h2><span class="num">6</span> 位置编码：教模型理解顺序</h2>
+
+  <p>Self-Attention 有一个隐藏的问题：<span class="hl-orange">它本身不关心 token 的顺序</span>。</p>
+
+  <p>你把 "猫吃鱼" 和 "鱼吃猫" 的 token 打乱顺序喂给 Self-Attention，只要 token 集合相同，计算结果可能完全一样——因为注意力分数只看向量内容，不看位置。但这两句话的意思完全相反！</p>
+
+  <p>解决方法是 <span class="hl">位置编码（Positional Encoding）</span>：给每个位置一个独特的"身份标识"向量，加到 Embedding 向量上，让模型知道"这个 token 在第几个位置"。</p>
+
+  <div class="code-block"><span class="comment"># 位置编码的加入方式（注意是"加"不是"拼接"）</span>
+
+final_input[i] = embedding[token_i] <span class="keyword">+</span> position_encoding[i]
+
+<span class="comment"># 位置 0: embedding("猫") + pos_vec_0</span>
+<span class="comment"># 位置 1: embedding("吃") + pos_vec_1</span>
+<span class="comment"># 位置 2: embedding("鱼") + pos_vec_2</span>
+
+<span class="comment"># 现在模型能区分"猫在第1位"和"猫在第3位"了</span></div>
+
+  <p>位置编码有两种常见实现方式：</p>
+
+  <p><span class="hl2">① 正弦位置编码（Sinusoidal）</span>——原始 Transformer 论文使用。用不同频率的正弦/余弦函数生成每个位置的向量。优点是可以泛化到训练时没见过的长度，缺点是固定不可学习。</p>
+
+  <p><span class="hl2">② 旋转位置编码（RoPE）</span>——当前主流方案（LLaMA、GPT-4、DeepSeek 都在用）。核心思想是把位置信息编码为向量的旋转角度。在计算 Q·K 点积时，两个位置之间的"距离"自然体现为旋转角之差。优雅、高效、支持长序列外推。</p>
+
+  <div class="insight-box">
+    <span class="icon">🔑</span>
+    <p><strong>位置编码的直觉：</strong>你可以把它类比为音乐的节拍标记。一首歌的歌词如果打乱了顺序就没有意义——你需要知道每个音符在第几拍。位置编码就是给每个 token 打上"节拍号"，让模型知道"这个词是出现在句首、句中还是句尾"以及"这两个词之间隔了多远"。</p>
+  </div>
+</section>
+
+<!-- ==================== 7. 完整的 Transformer Block ==================== -->
+<section>
+  <h2><span class="num">7</span> 完整的 Transformer Block</h2>
+
+  <p>Self-Attention 只是 Transformer 的核心组件之一。一个完整的 Transformer Block（块）还包含 Feed-Forward Network（前馈网络）、Layer Normalization（层归一化）和 Residual Connection（残差连接）。让我们一一了解：</p>
+
+  <div class="block-visual">
+    <div class="block-layer" style="background:var(--bg);border:2px solid var(--accent)">
+      输入向量（来自上一层）
+    </div>
+    <div class="block-arrow">↓</div>
+    <div class="block-layer" style="background:rgba(34,211,238,0.1);border:1px solid var(--accent)">
+      Layer Norm
+    </div>
+    <div class="block-arrow">↓</div>
+    <div class="block-layer" style="background:rgba(34,211,238,0.2);border:2px solid var(--accent);position:relative">
+      Multi-Head Self-Attention
+      <span class="block-residual">← 残差连接 →</span>
+    </div>
+    <div class="block-add" style="background:rgba(34,211,238,0.15);color:var(--accent);border:1px solid var(--accent)">+</div>
+    <div class="block-layer" style="background:rgba(167,139,250,0.1);border:1px solid var(--purple)">
+      Layer Norm
+    </div>
+    <div class="block-arrow">↓</div>
+    <div class="block-layer" style="background:rgba(167,139,250,0.2);border:2px solid var(--purple);position:relative">
+      Feed-Forward Network (MLP)
+      <span class="block-residual">← 残差连接 →</span>
+    </div>
+    <div class="block-add" style="background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid var(--purple)">+</div>
+    <div class="block-arrow">↓</div>
+    <div class="block-layer" style="background:var(--bg);border:2px solid var(--green)">
+      输出向量（送入下一层）
+    </div>
+  </div>
+
+  <p>逐个解释这些组件：</p>
+
+  <p><strong>🔹 Feed-Forward Network（FFN / MLP）</strong></p>
+  <p>Self-Attention 负责"token 之间的信息交流"，而 FFN 负责"对每个 token 各自做深层处理"。它是一个简单的两层全连接网络，中间维度通常是 Embedding 维度的 4 倍：</p>
+  <div class="code-block">FFN(x) = max(<span class="number">0</span>, x × W₁ + b₁) × W₂ + b₂
+<span class="comment"># 维度变化：d_model → 4×d_model → d_model</span>
+<span class="comment"># max(0, ...) 就是 ReLU 激活函数（或现代变体如 SwiGLU）</span>
+<span class="comment"># 研究认为 FFN 充当了模型的"记忆库"，存储事实性知识</span></div>
+
+  <p><strong>🔹 Residual Connection（残差连接）</strong></p>
+  <p>把输入直接加到输出上：<code>output = layer(x) + x</code>。好处：① 让梯度能畅通地反向传播（解决深层网络训练困难的问题）；② 让每一层只需学习"增量改进"，而不是从零重建整个表示。</p>
+
+  <p><strong>🔹 Layer Normalization</strong></p>
+  <p>将向量的数值标准化（均值=0，方差=1），防止数值在层与层之间越来越大或越来越小。就像定期"校准仪表"。</p>
+
+  <div class="insight-box purple">
+    <span class="icon">📚</span>
+    <p><strong>FFN 是"记忆"，Attention 是"推理"：</strong>研究者发现了一个有趣的分工——FFN 层倾向于存储事实性知识（如"巴黎是法国首都"），而 Attention 层负责在上下文中做推理和信息整合（如"他说的那个城市"指的是哪里）。这两者交替出现，让模型既有"知识"又有"思考能力"。</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 堆叠 ==================== -->
+<section>
+  <h2><span class="num">8</span> 层层堆叠：从浅到深</h2>
+
+  <p>一个 Transformer Block 只是一层。真实的大模型会把这个 Block <span class="hl">重复堆叠几十到上百次</span>：</p>
+
+  <div class="code-block"><span class="comment"># 各模型的层数对比：</span>
+
+GPT-2 Small:    <span class="number">12</span> 层    (<span class="number">117M</span> 参数)
+GPT-2 XL:      <span class="number">48</span> 层    (<span class="number">1.5B</span> 参数)
+GPT-3:         <span class="number">96</span> 层    (<span class="number">175B</span> 参数)
+LLaMA-2 70B:   <span class="number">80</span> 层    (<span class="number">70B</span> 参数)
+DeepSeek-V3:   <span class="number">61</span> 层    (<span class="number">671B</span> 参数, MoE)</div>
+
+  <p>每一层的 Attention 都在做"信息交流"，但关注的东西越来越抽象：</p>
+
+  <div class="blockquote">
+    <strong>浅层（1-10 层）：</strong>学习局部的词法和语法模式。<br>
+    比如："un" + "happy" → 否定含义；主语后面跟动词<br><br>
+    <strong>中层（10-50 层）：</strong>学习句法结构和语义关系。<br>
+    比如：指代消解（"它"指谁）；从句嵌套<br><br>
+    <strong>深层（50+ 层）：</strong>学习高级推理和世界知识。<br>
+    比如：因果推断；类比推理；常识判断
+  </div>
+
+  <p>这和人类视觉系统的分层很像：视网膜检测边缘 → V1 区识别简单形状 → V2/V4 识别纹理和物体 → IT 区识别面孔和场景。<span class="hl">信息每经过一层，抽象程度就提高一级。</span></p>
+
+  <div class="insight-box">
+    <span class="icon">🏗️</span>
+    <p><strong>完整的前向传播路径：</strong><br>
+    原始文本 → Tokenize → Token IDs → Embedding + Position Encoding → [Transformer Block × N 层] → 最后一层的输出向量 → Linear + Softmax → 词表上的概率分布 → 选出"下一个 token"<br><br>
+    从第一个 token 进入到最后输出概率，整个过程只涉及矩阵乘法、加法和少量非线性操作。这就是为什么 GPU 的大规模并行计算能力对大模型如此重要。</p>
+  </div>
+</section>
+
+<!-- ==================== 9. Quiz ==================== -->
+<section>
+  <h2><span class="num">9</span> 检验你的理解</h2>
+  <p>回答下面的问题来巩固对 Transformer 的理解。</p>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: Self-Attention 中的 Q、K、V 分别代表什么直觉？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">Q = 问题答案，K = 知识，V = 验证结果</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">Q = "我在找什么"，K = "我能提供什么标识"，V = "我实际的内容"</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">Q = 权重，K = 偏置，V = 向量</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！Query 像"提问"，Key 像"标签"，Value 像"内容"。用 Q 和 K 的相似度算出权重，然后按权重取 V 的加权和。就像用问题去匹配书的标题，然后按匹配度取书的内容。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ 想想图书馆的类比：你有一个问题（Query），书架上的书有标题（Key）和内容（Value）。你根据问题和标题的匹配度，决定从每本书中取多少内容。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: 为什么 GPT 模型需要因果遮罩（Causal Mask）？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">为了减少计算量，提高训练速度</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">防止模型在预测时偷看未来的 token，保持自回归生成的逻辑一致性</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">为了让模型只关注重要的 token</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！在生成时，模型逐字生成，未来的 token 还不存在。训练时用因果遮罩模拟这种"只能看前面"的约束，确保训练和推理的行为一致。如果允许看到未来，模型就不需要"预测"了——直接抄答案就行。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ 遮罩和计算量关系不大（它实际上不减少计算）。核心原因是：生成文本时模型看不到未来，训练时也不应该看到。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: Multi-Head Attention 的"多头"有什么好处？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">不同的头可以同时学习不同类型的注意力模式（语法、指代、语义等）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">多头比单头计算量更小、速度更快</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">多头只是为了增加参数量让模型更大</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！一个头只能学一种关注模式，多个头可以并行学习多种关系——有的头关注语法、有的关注指代、有的关注位置距离。把它们的信息合并，模型就能同时捕捉语言中的多种结构。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 多头的总计算量和单头基本相同（只是把维度拆分了）。多头的核心优势是"多角度分析"——每个头可以学习不同的关注模式。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: Transformer 中残差连接（Residual Connection）的主要作用是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">减少参数量，提高效率</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">让模型能处理更长的序列</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">让梯度能畅通传播，使几十甚至上百层的深度训练成为可能</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！没有残差连接，梯度在 96 层中反向传播时会指数级衰减（梯度消失），模型根本无法训练。残差连接提供了一条"高速公路"让梯度直通底层，同时让每层只需学习"增量改进"。这是训练深层网络的关键技巧。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ 残差连接不影响参数量或序列长度。它的核心作用是解决深层网络的梯度传播问题——把 output = f(x) 改为 output = f(x) + x，让梯度能直接传到底层。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">10</span> 编程练习：手写 Self-Attention</h2>
+
+  <p>本课的编程练习会让你从零实现 Self-Attention 的核心计算——这是整个 Transformer 中最关键、也是最优雅的部分。实现之后，你会发现所谓的"注意力机制"在代码上并不复杂——它的深刻之处在于设计思想而非代码量。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：手写 Self-Attention</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：compute_attention_scores()</strong> — 计算 Q 和 K 的点积注意力分数<br>
+      <span style="font-size:13px;color:var(--text-dim)">对于每对 (query_i, key_j)，用点积衡量它们的相关性。然后除以 √d_k 做缩放。</span>
+    </p>
+    <p>
+      <strong>任务 2：apply_causal_mask()</strong> — 应用因果遮罩<br>
+      <span style="font-size:13px;color:var(--text-dim)">把未来位置（j > i）的分数设为负无穷，让模型无法"偷看未来"。</span>
+    </p>
+    <p>
+      <strong>任务 3：compute_attention_weights()</strong> — 对分数做 Softmax 得到权重<br>
+      <span style="font-size:13px;color:var(--text-dim)">每一行做一次 Softmax，让权重变成概率分布（0~1，每行之和=1）。</span>
+    </p>
+    <p>
+      <strong>任务 4：compute_attention_output()</strong> — 用权重对 V 做加权求和<br>
+      <span style="font-size:13px;color:var(--text-dim)">每个位置的输出 = Σ(权重_j × V_j)。这是"信息融合"的关键步骤。</span>
+    </p>
+    <p>
+      <strong>任务 5：self_attention()</strong> — 串联所有步骤，完成完整的 Self-Attention<br>
+      <span style="font-size:13px;color:var(--text-dim)">生成 Q/K/V → 计算分数 → 遮罩 → Softmax → 加权求和。一次完整的"token 对话"过程。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了 Self-Attention 的完整计算流程！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../02-embedding-prediction/lesson.html">← 上一课：Embedding 与 Next-Token Prediction</a>
+    <a href="../04-training/lesson.html">下一课：训练实战 →</a>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ============================================================
+// Attention Heatmap Demo
+// ============================================================
+const attnExamples = [
+  {
+    name: '猫坐在垫子上',
+    tokens: ['猫', '坐在', '垫子', '上'],
+    weights: [
+      [0.45, 0.15, 0.30, 0.10],
+      [0.35, 0.30, 0.25, 0.10],
+      [0.25, 0.20, 0.40, 0.15],
+      [0.20, 0.30, 0.30, 0.20],
+    ],
+    explain: '"猫"高度关注"垫子"（语义关联），"坐在"关注"猫"（主语）和"垫子"（宾语）。',
+  },
+  {
+    name: '猫很可爱，它喜欢鱼',
+    tokens: ['猫', '很', '可爱', '它', '喜欢', '鱼'],
+    weights: [
+      [0.50, 0.05, 0.10, 0.05, 0.10, 0.20],
+      [0.20, 0.30, 0.30, 0.05, 0.05, 0.10],
+      [0.35, 0.15, 0.30, 0.05, 0.05, 0.10],
+      [0.60, 0.05, 0.10, 0.15, 0.05, 0.05],
+      [0.15, 0.05, 0.05, 0.40, 0.25, 0.10],
+      [0.10, 0.05, 0.05, 0.10, 0.20, 0.50],
+    ],
+    explain: '"它"把 60% 注意力给了"猫"——模型学会了指代消解。"喜欢"主要关注"它"（主语）。',
+  },
+  {
+    name: '我在北京工作',
+    tokens: ['我', '在', '北京', '工作'],
+    weights: [
+      [0.55, 0.10, 0.15, 0.20],
+      [0.30, 0.20, 0.35, 0.15],
+      [0.15, 0.25, 0.45, 0.15],
+      [0.35, 0.10, 0.20, 0.35],
+    ],
+    explain: '"在"高度关注"北京"（介词+地点搭配），"工作"关注"我"（谁在工作）。',
+  },
+];
+
+let currentAttnIdx = 0;
+const attnControlsEl = document.getElementById('attn-controls');
+const attnDisplayEl = document.getElementById('attn-display');
+const attnExplainEl = document.getElementById('attn-explain');
+
+attnExamples.forEach((ex, idx) => {
+  const btn = document.createElement('button');
+  btn.textContent = ex.name;
+  btn.className = idx === 0 ? 'active' : '';
+  btn.addEventListener('click', () => {
+    currentAttnIdx = idx;
+    renderAttn();
+    attnControlsEl.querySelectorAll('button').forEach((b, i) => {
+      b.className = i === idx ? 'active' : '';
+    });
+  });
+  attnControlsEl.appendChild(btn);
+});
+
+function renderAttn() {
+  const ex = attnExamples[currentAttnIdx];
+  const n = ex.tokens.length;
+  let html = `<div class="attn-grid" style="grid-template-columns: 60px repeat(${n}, 54px)">`;
+
+  // header row
+  html += `<div class="attn-label"></div>`;
+  for (const t of ex.tokens) {
+    html += `<div class="attn-label">${t}</div>`;
+  }
+
+  // data rows
+  for (let i = 0; i < n; i++) {
+    html += `<div class="attn-label row-label">${ex.tokens[i]}</div>`;
+    for (let j = 0; j < n; j++) {
+      const w = ex.weights[i][j];
+      const alpha = Math.round(w * 255);
+      const bg = `rgba(34,211,238,${w * 0.9 + 0.05})`;
+      const textColor = w > 0.3 ? '#000' : '#fff';
+      html += `<div class="attn-cell" style="background:${bg};color:${textColor}">${(w * 100).toFixed(0)}%</div>`;
+    }
+  }
+
+  html += '</div>';
+  attnDisplayEl.innerHTML = html;
+  attnExplainEl.textContent = ex.explain;
+}
+
+renderAttn();
+
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

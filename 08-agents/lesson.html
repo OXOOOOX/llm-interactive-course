@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第八课：Agent 与工具调用 — 让模型采取行动</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #22d3ee;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(34,211,238,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(34,211,238,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+  .hl-pink { color: var(--pink); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '🤖'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.green { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.2); }
+  .insight-box.orange { background: rgba(251,146,60,0.08); border-color: rgba(251,146,60,0.2); }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Agent loop visual ---- */
+  .agent-loop {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0;
+  }
+  .agent-loop h3 { font-size: 18px; margin-bottom: 20px; text-align: center; }
+  .loop-steps { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .loop-step {
+    width: 340px; padding: 14px 20px; border-radius: 10px;
+    text-align: center; font-size: 14px; font-weight: 600;
+  }
+  .loop-arrow { color: var(--text-dim); font-size: 18px; }
+  .loop-back {
+    margin-top: 16px; padding: 8px 20px; border-radius: 20px;
+    border: 2px dashed var(--accent); color: var(--accent);
+    font-size: 13px; font-weight: 600;
+  }
+
+  /* ---- Chat demo ---- */
+  .chat-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .chat-demo h3 { font-size: 18px; margin-bottom: 16px; }
+  .chat-msg {
+    padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .chat-msg.user { background: rgba(108,140,255,0.1); border: 1px solid rgba(108,140,255,0.2); }
+  .chat-msg.assistant { background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.15); }
+  .chat-msg.tool-call { background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.2); font-family: 'SF Mono', monospace; }
+  .chat-msg.tool-result { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); font-family: 'SF Mono', monospace; }
+  .chat-msg .role { font-weight: 700; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
+  .chat-msg.user .role { color: var(--accent2); }
+  .chat-msg.assistant .role { color: var(--accent); }
+  .chat-msg.tool-call .role { color: var(--orange); }
+  .chat-msg.tool-result .role { color: var(--green); }
+
+  /* ---- Tool cards ---- */
+  .tool-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0; }
+  .tool-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; text-align: center; transition: all 0.3s;
+  }
+  .tool-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .tool-card .tool-icon { font-size: 28px; margin-bottom: 8px; }
+  .tool-card .tool-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .tool-card .tool-desc { font-size: 11px; color: var(--text-dim); }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(34,211,238,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .tool-cards { grid-template-columns: 1fr 1fr; }
+    .loop-step { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第八课 · Agent 系统</div>
+  <h1>Agent 与工具调用<br><span>让模型采取行动</span></h1>
+  <p>前面七课，模型只能"说话"——接收文本、输出文本。但真正有用的 AI 助手需要"动手"：查数据库、调 API、写文件、执行代码。这节课我们学习如何让大模型从"聊天机器人"进化为"能做事的 Agent"。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 从聊天到行动 ==================== -->
+<section>
+  <h2><span class="num">0</span> 从聊天到行动</h2>
+
+  <p>大模型本质上只会做一件事：给定输入文本，输出下一段文本。但如果我们允许模型在输出中"调用工具"——并把工具的结果反馈给它——它就变成了一个能与世界交互的 <span class="hl">Agent（智能体）</span>。</p>
+
+  <div class="chat-demo">
+    <h3>💬 Agent 对话示例：查询天气</h3>
+    <div class="chat-msg user"><div class="role">用户</div>明天北京天气怎么样？需要带伞吗？</div>
+    <div class="chat-msg tool-call"><div class="role">模型 → 调用工具</div>get_weather(city="北京", date="2025-01-16")</div>
+    <div class="chat-msg tool-result"><div class="role">工具返回结果</div>{"temp": "2°C ~ -5°C", "weather": "小雪", "precipitation": 0.85}</div>
+    <div class="chat-msg assistant"><div class="role">模型</div>明天北京预报有小雪，气温 -5°C 到 2°C，降水概率 85%。建议带伞，同时注意保暖——围巾和厚外套都穿上吧！</div>
+  </div>
+
+  <p>关键观察：模型不是直接"编造"天气信息，而是<span class="hl">决定需要什么信息 → 调用对应工具 → 基于真实数据回答</span>。这从根本上解决了大模型"幻觉"的问题——它不需要记住天气，只需要知道"该问谁"。</p>
+</section>
+
+<!-- ==================== 1. Function Calling ==================== -->
+<section>
+  <h2><span class="num">1</span> Function Calling：模型如何调用工具</h2>
+
+  <p><span class="hl">Function Calling（函数调用）</span>的实现原理其实很简单：在 prompt 中告诉模型有哪些工具可用，然后训练模型在需要时输出特定格式的"调用指令"。</p>
+
+  <div class="code-block"><span class="comment"># 1. 给模型描述可用工具（作为 system prompt 的一部分）：</span>
+
+tools = [
+  {
+    <span class="string">"name"</span>: <span class="string">"get_weather"</span>,
+    <span class="string">"description"</span>: <span class="string">"查询指定城市和日期的天气预报"</span>,
+    <span class="string">"parameters"</span>: {
+      <span class="string">"city"</span>: {<span class="string">"type"</span>: <span class="string">"string"</span>, <span class="string">"description"</span>: <span class="string">"城市名"</span>},
+      <span class="string">"date"</span>: {<span class="string">"type"</span>: <span class="string">"string"</span>, <span class="string">"description"</span>: <span class="string">"日期 YYYY-MM-DD"</span>}
+    }
+  },
+  {
+    <span class="string">"name"</span>: <span class="string">"search_web"</span>,
+    <span class="string">"description"</span>: <span class="string">"搜索互联网获取最新信息"</span>,
+    <span class="string">"parameters"</span>: {<span class="string">"query"</span>: {<span class="string">"type"</span>: <span class="string">"string"</span>}}
+  }
+]
+
+<span class="comment"># 2. 模型看到用户问题后，生成工具调用（特殊格式的文本）：</span>
+
+模型输出: {<span class="string">"tool_call"</span>: <span class="string">"get_weather"</span>, <span class="string">"arguments"</span>: {<span class="string">"city"</span>: <span class="string">"北京"</span>, <span class="string">"date"</span>: <span class="string">"2025-01-16"</span>}}
+
+<span class="comment"># 3. 系统执行工具，把结果返回给模型：</span>
+
+系统注入: {<span class="string">"tool_result"</span>: {<span class="string">"temp"</span>: <span class="string">"2°C ~ -5°C"</span>, ...}}
+
+<span class="comment"># 4. 模型基于工具结果生成最终回答</span>
+
+<span class="comment"># 本质：模型学会了在需要时输出"JSON 格式的工具调用"</span>
+<span class="comment"># 而不是直接回答用户。这是训练出来的能力。</span></div>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>核心洞见：</strong>Function Calling 不需要模型架构的任何改变——模型还是在做 Next-Token Prediction。只不过它被训练为"在某些情况下，输出的下一个 token 序列是一个 JSON 格式的工具调用"。工具调用只是一种特殊的输出格式，和输出诗歌、代码没有本质区别。</p>
+  </div>
+
+  <p>常见的工具类型：</p>
+  <div class="tool-cards">
+    <div class="tool-card"><div class="tool-icon">🔍</div><div class="tool-name">搜索</div><div class="tool-desc">查询互联网<br>获取最新信息</div></div>
+    <div class="tool-card"><div class="tool-icon">💻</div><div class="tool-name">代码执行</div><div class="tool-desc">运行 Python<br>做计算/画图</div></div>
+    <div class="tool-card"><div class="tool-icon">📄</div><div class="tool-name">文件操作</div><div class="tool-desc">读/写/编辑<br>本地文件</div></div>
+    <div class="tool-card"><div class="tool-icon">🗃️</div><div class="tool-name">数据库</div><div class="tool-desc">查询 SQL<br>获取结构化数据</div></div>
+    <div class="tool-card"><div class="tool-icon">🌐</div><div class="tool-name">API 调用</div><div class="tool-desc">调用外部服务<br>发邮件/下单</div></div>
+    <div class="tool-card"><div class="tool-icon">🖼️</div><div class="tool-name">图像生成</div><div class="tool-desc">调用 DALL-E<br>生成图片</div></div>
+  </div>
+</section>
+
+<!-- ==================== 2. Agent Loop ==================== -->
+<section>
+  <h2><span class="num">2</span> Agent Loop：思考-行动-观察循环</h2>
+
+  <p>一个工具调用可能不够——复杂任务需要多步推理和多次工具调用。这就是 <span class="hl">Agent Loop（代理循环）</span>：模型不断地"思考→行动→观察→思考"直到任务完成。</p>
+
+  <div class="agent-loop">
+    <h3>🔄 Agent 循环（ReAct 模式）</h3>
+    <div class="loop-steps">
+      <div class="loop-step" style="background:rgba(34,211,238,0.15);border:1px solid rgba(34,211,238,0.3)">
+        🤔 <strong>Thought</strong>：分析当前情况，决定下一步
+      </div>
+      <div class="loop-arrow">↓</div>
+      <div class="loop-step" style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.3)">
+        🔧 <strong>Action</strong>：调用工具 / 执行操作
+      </div>
+      <div class="loop-arrow">↓</div>
+      <div class="loop-step" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3)">
+        👁️ <strong>Observation</strong>：获取工具返回的结果
+      </div>
+      <div class="loop-arrow">↓</div>
+      <div class="loop-step" style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3)">
+        ✅ <strong>Answer</strong>：够了就回答 / 不够就继续循环
+      </div>
+      <div class="loop-back">↺ 重复直到任务完成（或达到最大步数）</div>
+    </div>
+  </div>
+
+  <div class="chat-demo">
+    <h3>💬 多步 Agent 示例：帮用户规划旅行</h3>
+    <div class="chat-msg user"><div class="role">用户</div>帮我查一下下周末上海到杭州的高铁，然后推荐一家西湖附近的酒店</div>
+    <div class="chat-msg assistant"><div class="role">Thought</div>用户需要两个信息：1) 高铁车次 2) 酒店推荐。我先查高铁。</div>
+    <div class="chat-msg tool-call"><div class="role">Action</div>search_trains(from="上海", to="杭州", date="2025-01-18")</div>
+    <div class="chat-msg tool-result"><div class="role">Observation</div>[{"train":"G7501","depart":"08:15","arrive":"09:12","price":73}, {"train":"G7553","depart":"10:30","arrive":"11:25","price":73}, ...]</div>
+    <div class="chat-msg assistant"><div class="role">Thought</div>高铁信息拿到了。现在查西湖附近的酒店。</div>
+    <div class="chat-msg tool-call"><div class="role">Action</div>search_hotels(location="杭州西湖", checkin="2025-01-18", checkout="2025-01-19")</div>
+    <div class="chat-msg tool-result"><div class="role">Observation</div>[{"name":"西湖国宾馆","price":1280,"rating":4.9}, {"name":"湖畔花园酒店","price":680,"rating":4.7}, ...]</div>
+    <div class="chat-msg assistant"><div class="role">Answer</div>帮你查好了！🚄 <strong>高铁推荐：</strong>G7501 次，08:15 上海出发，09:12 到杭州，二等座 73 元。🏨 <strong>酒店推荐：</strong>湖畔花园酒店，距西湖步行 5 分钟，680 元/晚，评分 4.7。性价比很高！需要我帮你预订吗？</div>
+  </div>
+
+  <div class="insight-box blue">
+    <span class="icon">🧠</span>
+    <p><strong>Agent 的"智能"来自哪里？</strong>Agent 的能力 = 模型的推理能力 + 工具的执行能力。模型负责"做决策"（调什么工具、传什么参数、怎么整合结果），工具负责"做执行"（真正去查数据、调 API）。模型本身不会查高铁——但它知道"该调用 search_trains"并且能正确填入参数。这种"知道何时做什么"的判断力来自训练。</p>
+  </div>
+</section>
+
+<!-- ==================== 3. Prompt 工程 ==================== -->
+<section>
+  <h2><span class="num">3</span> System Prompt：定义 Agent 的"灵魂"</h2>
+
+  <p>Agent 的行为很大程度上由 <span class="hl">System Prompt</span> 决定——它告诉模型"你是谁、能做什么、该怎么做"。</p>
+
+  <div class="code-block"><span class="comment"># 一个典型的 Agent System Prompt：</span>
+
+system_prompt = <span class="string">"""
+你是一个智能助手，可以使用以下工具来帮助用户：
+
+## 可用工具
+
+1. search_web(query) - 搜索互联网
+2. run_python(code) - 执行 Python 代码
+3. read_file(path) - 读取文件内容
+4. write_file(path, content) - 写入文件
+
+## 行为准则
+
+- 优先使用工具获取真实信息，不要编造
+- 不确定时先搜索再回答
+- 涉及计算时使用 run_python，不要心算
+- 每次只调用一个工具，等待结果后再决定下一步
+- 如果工具调用失败，尝试换一种方式或告知用户
+
+## 输出格式
+
+需要调用工具时，输出：
+{"tool": "工具名", "args": {"参数": "值"}}
+
+不需要工具时，直接回答用户。
+"""</span></div>
+
+  <p><strong>好的 System Prompt 的要素：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl2">角色定义</span>——明确模型的身份和职责边界</li>
+    <li><span class="hl2">工具描述</span>——每个工具的功能、参数、返回值</li>
+    <li><span class="hl2">行为准则</span>——什么时候该调工具、什么时候直接回答</li>
+    <li><span class="hl2">输出格式</span>——工具调用的 JSON 格式，模型需要严格遵守</li>
+    <li><span class="hl2">错误处理</span>——工具失败时该怎么办</li>
+  </ul>
+</section>
+
+<!-- ==================== 4. RAG ==================== -->
+<section>
+  <h2><span class="num">4</span> RAG：检索增强生成</h2>
+
+  <p><span class="hl">RAG（Retrieval-Augmented Generation）</span>是 Agent 最常用的模式之一：先从知识库中检索相关信息，再让模型基于检索结果生成回答。它本质上就是"先查资料再回答"。</p>
+
+  <div class="code-block"><span class="comment"># RAG 的工作流程：</span>
+
+<span class="comment"># 1. 用户提问</span>
+query = <span class="string">"我们公司的年假政策是什么？"</span>
+
+<span class="comment"># 2. 把问题转换为向量（Embedding）</span>
+query_vector = embed(query)  <span class="comment"># [0.12, -0.34, 0.78, ...]</span>
+
+<span class="comment"># 3. 在向量数据库中搜索最相关的文档片段</span>
+results = vector_db.search(query_vector, top_k=<span class="number">3</span>)
+<span class="comment"># → ["员工手册第5章：年假政策...", "HR FAQ...", ...]</span>
+
+<span class="comment"># 4. 把检索结果作为上下文，让模型基于此回答</span>
+prompt = f<span class="string">"""基于以下参考信息回答用户问题：
+
+参考信息：
+{results}
+
+用户问题：{query}
+
+请基于参考信息回答，如果信息不足请说明。"""</span>
+
+answer = model.generate(prompt)
+<span class="comment"># → "根据公司员工手册，入职满一年后享有5天年假..."</span></div>
+
+  <p><strong>RAG 的优势：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl-green">减少幻觉</span>——模型的回答基于真实检索到的文档</li>
+    <li><span class="hl-green">知识可更新</span>——更新文档库即可，不需要重新训练模型</li>
+    <li><span class="hl-green">可溯源</span>——每个回答都能追溯到具体的源文档</li>
+    <li><span class="hl-green">领域适配</span>——把公司内部文档放入知识库，模型就变成"公司专家"</li>
+  </ul>
+
+  <div class="insight-box green">
+    <span class="icon">📚</span>
+    <p><strong>RAG vs 微调：何时用哪个？</strong>RAG 适合"知识更新频繁"和"需要溯源"的场景——随时可以更新文档库。微调适合"改变模型的行为风格"和"教会模型新的任务格式"。很多实际系统两者结合：用微调让模型学会"RAG 的使用方式"，用 RAG 提供实时知识。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. 多 Agent 协作 ==================== -->
+<section>
+  <h2><span class="num">5</span> 多 Agent 协作</h2>
+
+  <p>单个 Agent 能力有限。复杂任务可以拆分给多个专业化的 Agent——每个 Agent 负责一个方面，互相协作完成任务。</p>
+
+  <div class="code-block"><span class="comment"># 多 Agent 协作示例：软件开发团队</span>
+
+<span class="keyword">Product Manager Agent</span>:
+  - 分析用户需求，拆解为具体任务
+  - 工具：create_task(), prioritize()
+
+<span class="keyword">Developer Agent</span>:
+  - 编写代码，实现功能
+  - 工具：write_code(), run_tests(), git_commit()
+
+<span class="keyword">Reviewer Agent</span>:
+  - 审查代码质量，提出修改建议
+  - 工具：read_code(), analyze_complexity(), suggest_fix()
+
+<span class="keyword">Orchestrator</span>（编排者）:
+  - 协调各 Agent 的执行顺序
+  - 决定何时让哪个 Agent 行动
+  - 处理 Agent 之间的信息传递
+
+<span class="comment"># 工作流程：</span>
+<span class="comment"># 用户提需求 → PM 拆任务 → Developer 写代码 → Reviewer 审查</span>
+<span class="comment"># → Developer 修改 → Reviewer 通过 → 提交</span></div>
+
+  <div class="insight-box purple">
+    <span class="icon">🏗️</span>
+    <p><strong>Agent 框架生态：</strong>LangChain、LlamaIndex、AutoGen、CrewAI、Dify 等框架提供了构建 Agent 系统的基础设施——工具注册、上下文管理、循环控制、多 Agent 编排。但核心逻辑是通用的：prompt 描述角色→模型决策→执行→反馈→再决策。</p>
+  </div>
+</section>
+
+<!-- ==================== 6. 挑战与局限 ==================== -->
+<section>
+  <h2><span class="num">6</span> Agent 的挑战与局限</h2>
+
+  <p>Agent 系统虽然强大，但目前仍面临一些核心挑战：</p>
+
+  <p><strong>🔹 可靠性问题</strong></p>
+  <p>模型可能调用错误的工具、传入错误的参数、或误解工具返回的结果。Agent 步骤越多，累积出错的概率越高（每步 95% 准确率，10 步后只剩 60%）。</p>
+
+  <p><strong>🔹 规划能力有限</strong></p>
+  <p>当前模型的长期规划能力仍然不足。对于需要 20+ 步的复杂任务，模型经常会"迷失方向"或重复之前的步骤。</p>
+
+  <p><strong>🔹 安全风险</strong></p>
+  <p>Agent 可以执行实际操作（删文件、发邮件、花钱）。如果模型判断失误或被恶意用户诱导，后果可能很严重。需要严格的权限控制和人类审核机制。</p>
+
+  <p><strong>🔹 成本与延迟</strong></p>
+  <p>每次工具调用都意味着一次额外的模型推理（读取结果并决定下一步）。多步 Agent 的延迟和 API 成本都显著高于单轮对话。</p>
+
+  <div class="code-block"><span class="comment"># Agent 的可靠性 vs 步骤数：</span>
+
+单步准确率:  <span class="number">95%</span>
+3 步成功率:  0.95³ = <span class="number">85.7%</span>
+5 步成功率:  0.95⁵ = <span class="number">77.4%</span>
+10 步成功率: 0.95¹⁰ = <span class="number">59.9%</span>
+20 步成功率: 0.95²⁰ = <span class="number">35.8%</span>
+
+<span class="comment"># 这就是为什么复杂 Agent 任务经常"半路跑偏"</span>
+<span class="comment"># 解决方案：</span>
+<span class="comment"># - 把大任务拆成小步骤，减少单次推理的复杂度</span>
+<span class="comment"># - 每步加入验证/自检机制</span>
+<span class="comment"># - 关键操作需要人类确认</span>
+<span class="comment"># - 用更强的模型（准确率更高）</span></div>
+
+  <div class="insight-box orange">
+    <span class="icon">🔮</span>
+    <p><strong>Agent 的未来：</strong>当前的 Agent 还处于"能用但不完全可靠"的阶段。随着模型推理能力的提升（如 o1/o3 的思维链推理）、更好的规划算法（如 MCTS）、以及更可靠的工具接口设计，Agent 的能力正在快速进化。未来的 AI 助手大概率不只是"聊天"，而是能真正"做事"的 Agent 系统。</p>
+  </div>
+</section>
+
+<!-- ==================== 7. 实际案例 ==================== -->
+<section>
+  <h2><span class="num">7</span> 实际案例：你每天都在用的 Agent</h2>
+
+  <p>你可能没有意识到，很多你日常使用的 AI 产品已经是 Agent 系统：</p>
+
+  <div class="story-card">
+    <h3>🌍 真实世界中的 Agent</h3>
+    <p><strong>ChatGPT (with plugins/tools)：</strong>搜索网页、执行 Python 代码、生成图片、分析文件——每次你让它"搜一下"或"算一下"，它都在做 Function Calling。</p>
+    <p><strong>Cursor/Copilot（代码 Agent）：</strong>读取项目文件、理解代码库、编写代码、运行测试——你现在用的这个 IDE 就是一个代码 Agent。</p>
+    <p><strong>Perplexity（搜索 Agent）：</strong>把用户问题拆解为多个搜索查询、综合多个网页结果、生成带引用的回答。</p>
+    <p><strong>Devin/OpenHands（全栈开发 Agent）：</strong>自主写代码、调试、提交 PR——尝试完成完整的开发任务。</p>
+    <p><strong>企业 RPA Agent：</strong>自动处理报销、审批、数据录入——按照规则和判断操作各种系统。</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 构建 Agent 的设计模式 ==================== -->
+<section>
+  <h2><span class="num">8</span> 设计模式：构建可靠的 Agent</h2>
+
+  <div class="code-block"><span class="comment"># 模式 1: ReAct (Reasoning + Acting)</span>
+<span class="comment"># 每步先"思考"再"行动"，让推理过程透明可追溯</span>
+
+Thought: 用户想知道这个函数的 bug，我需要先看代码
+Action: read_file("src/utils.py")
+Observation: [文件内容...]
+Thought: 我看到第 42 行有一个 off-by-one 错误
+Action: 无需再调工具
+Answer: 第 42 行的循环条件应该用 < 而不是 <=...
+
+
+<span class="comment"># 模式 2: Plan-and-Execute</span>
+<span class="comment"># 先制定完整计划，再逐步执行</span>
+
+Plan:
+1. 搜索竞品分析报告
+2. 提取关键数据点
+3. 用 Python 画对比图
+4. 写总结报告
+
+Execute Step 1: search_web("2024 CRM software market comparison")
+Execute Step 2: ...
+
+
+<span class="comment"># 模式 3: Self-Reflection</span>
+<span class="comment"># 执行后自我检查，发现问题自动修正</span>
+
+Action: write_code(solution)
+Self-check: 运行测试发现 2 个用例失败
+Reflection: 我漏考虑了空列表的情况
+Action: write_code(fixed_solution)
+Self-check: 全部测试通过 ✓</div>
+
+  <div class="insight-box">
+    <span class="icon">🔑</span>
+    <p><strong>构建好 Agent 的关键：</strong>① 清晰的工具描述（模型只有理解工具才能正确使用）；② 合理的步骤限制（防止无限循环）；③ 错误恢复机制（工具失败时的 fallback）；④ 人类监督（关键操作需确认）；⑤ 日志记录（便于调试和改进）。</p>
+  </div>
+</section>
+
+<!-- ==================== 9. Agent 训练 ==================== -->
+<section>
+  <h2><span class="num">9</span> 如何训练一个 Agent？</h2>
+
+  <p>前面讲的 Agent 能力（Function Calling、多步推理、工具选择）不是从天上掉下来的——它需要专门训练。Agent 的训练方法正在快速发展，这里介绍当前主流的几种思路。</p>
+
+  <!-- ---- 9.1 ---- -->
+  <h3 style="font-size:20px;margin-top:12px;margin-bottom:16px;color:var(--accent)">9.1 SFT：用标注好的工具调用示例训练</h3>
+
+  <p>最基础的方法和第五课学的 SFT 一样：<span class="hl">收集大量"问题→思考→工具调用→结果→回答"的示例，当作训练数据</span>。</p>
+
+  <div class="code-block"><span class="comment"># Agent SFT 训练数据（一条样本）：</span>
+
+{
+  <span class="string">"messages"</span>: [
+    {<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"北京明天会下雨吗？"</span>},
+    {<span class="string">"role"</span>: <span class="string">"assistant"</span>, <span class="string">"content"</span>: <span class="keyword">null</span>,
+     <span class="string">"tool_calls"</span>: [{<span class="string">"name"</span>: <span class="string">"get_weather"</span>, <span class="string">"args"</span>: {<span class="string">"city"</span>: <span class="string">"北京"</span>}}]},
+    {<span class="string">"role"</span>: <span class="string">"tool"</span>, <span class="string">"content"</span>: <span class="string">"{\"weather\": \"小雨\", \"temp\": \"12°C\"}"</span>},
+    {<span class="string">"role"</span>: <span class="string">"assistant"</span>, <span class="string">"content"</span>: <span class="string">"是的，明天北京预报有小雨，气温 12°C，建议带伞出门。"</span>}
+  ]
+}
+
+<span class="comment"># 模型从这些示例中学到：</span>
+<span class="comment"># ① 什么时候该调用工具（而不是直接回答）</span>
+<span class="comment"># ② 调用哪个工具、传什么参数</span>
+<span class="comment"># ③ 怎么基于工具结果生成自然语言回答</span></div>
+
+  <p>这就是 GPT-3.5/4 最初获得 Function Calling 能力的方式。OpenAI 用大量的工具调用对话示例做 SFT，让模型学会了在合适时机输出 JSON 格式的调用指令。</p>
+
+  <!-- ---- 9.2 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">9.2 环境反馈 + RL：让 Agent 在"做事"中学习</h3>
+
+  <p>SFT 有一个局限：它只能模仿示例中的行为。但 Agent 的核心能力是<span class="hl-orange">在复杂环境中自主决策</span>——这靠模仿是不够的，需要让 Agent 真正去尝试、去犯错、从结果中学习。</p>
+
+  <div class="story-card">
+    <h3>🎮 Agent RL 的直觉：学打游戏</h3>
+    <p>就像让 AI 学打游戏：你不需要告诉它"在这个画面应该按左键"——你只需要让它不停地打，然后告诉它"这局赢了（+1 分）"或"这局输了（-1 分）"。几百万局之后，它自己就学会了最优策略。</p>
+    <p style="margin-top:12px">Agent 训练的逻辑类似：</p>
+    <p>① 给 Agent 一个任务（如"帮我查机票并预订最便宜的"）<br>
+    ② 让它在模拟环境中自由操作（调 API、填表单、点按钮……）<br>
+    ③ 任务完成了 → 奖励；做错了或超时 → 惩罚<br>
+    ④ 用强化学习（如 PPO）更新模型参数</p>
+  </div>
+
+  <div class="code-block"><span class="comment"># Agent RL 训练循环（伪代码）：</span>
+
+<span class="keyword">for</span> episode <span class="keyword">in</span> range(训练轮数):
+    task = sample_task()              <span class="comment"># 随机抽一个任务</span>
+    env = create_environment(task)    <span class="comment"># 创建模拟环境</span>
+
+    <span class="keyword">for</span> step <span class="keyword">in</span> range(max_steps):
+        observation = env.get_state()               <span class="comment"># 当前状态</span>
+        action = agent.decide(observation)           <span class="comment"># Agent 决策</span>
+        result, reward, done = env.execute(action)   <span class="comment"># 执行并获得反馈</span>
+
+        <span class="keyword">if</span> done:
+            <span class="keyword">break</span>
+
+    <span class="comment"># 根据整个 episode 的奖励更新 Agent</span>
+    agent.update(trajectory, total_reward)
+
+<span class="comment"># 关键：奖励信号来自环境（任务是否完成）而不是人类标注</span></div>
+
+  <p><strong>典型的 Agent 训练环境：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl2">WebArena / VisualWebArena</span> — 在真实网页上操作（搜索、购物、填表）</li>
+    <li><span class="hl2">SWE-bench</span> — 在真实 GitHub 仓库中修 bug、写代码</li>
+    <li><span class="hl2">OSWorld</span> — 在完整操作系统中执行任务（打开应用、编辑文件）</li>
+    <li><span class="hl2">API-Bank</span> — 调用各种模拟 API 完成多步任务</li>
+  </ul>
+
+  <!-- ---- 9.3 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">9.3 轨迹级 RLHF / DPO：从偏好中学决策</h3>
+
+  <p>第五课学的 RLHF 和 DPO 也可以用来训练 Agent——只不过"偏好对"从单轮回答变成了<span class="hl">完整的操作轨迹（trajectory）</span>：</p>
+
+  <div class="code-block"><span class="comment"># 单轮 DPO（第五课）：比较两个"回答"</span>
+好回答: <span class="string">"巴黎是法国的首都，位于塞纳河畔。"</span>
+差回答: <span class="string">"法国的首都好像是里昂吧。"</span>
+
+<span class="comment"># Agent DPO：比较两条"完整操作轨迹"</span>
+好轨迹: search("北京到杭州高铁") → 选最早班次 → book(G7501) → <span class="keyword">完成 ✓</span>
+差轨迹: search("北京杭州") → 点进无关链接 → search("火车票") → 超时 <span class="keyword">✗</span>
+
+<span class="comment"># 训练目标一样：让模型更倾向于产生"好轨迹"的行为模式</span></div>
+
+  <p>这种方法的优势是不需要复杂的环境模拟器——只要能收集到成功和失败的操作记录，就可以用 DPO 来训练。很多公司用线上真实的 Agent 操作日志（成功/失败）作为训练数据。</p>
+
+  <!-- ---- 9.4 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">9.4 过程奖励：每一步都给反馈</h3>
+
+  <p>Agent 任务通常有很多步。如果只在最后告诉模型"成功/失败"，模型很难知道<span class="hl-orange">到底哪一步做对了、哪一步做错了</span>——这叫"信用分配问题"（credit assignment problem）。</p>
+
+  <p><span class="hl">过程奖励模型（Process Reward Model, PRM）</span>的解决方案是：不只给最终结果打分，而是<strong>给每一步都打分</strong>。</p>
+
+  <div class="code-block"><span class="comment"># 结果奖励 vs 过程奖励：</span>
+
+<span class="comment"># 结果奖励（Outcome RM）：</span>
+Step 1: search("航班")       → ?
+Step 2: filter(最便宜)       → ?
+Step 3: book(错误的航班)     → ?
+Step 4: 任务失败             → <span class="number">-1</span>   <span class="comment">← 只有最后一步有反馈</span>
+<span class="comment"># 模型：到底哪一步错了？？？</span>
+
+<span class="comment"># 过程奖励（Process RM）：</span>
+Step 1: search("航班")       → <span class="number">+0.8</span>  <span class="comment">✓ 搜索词合理</span>
+Step 2: filter(最便宜)       → <span class="number">+0.9</span>  <span class="comment">✓ 筛选逻辑正确</span>
+Step 3: book(错误的航班)     → <span class="number">-0.7</span>  <span class="comment">✗ 选错了！这里出问题了</span>
+Step 4: 任务失败             → <span class="number">-1.0</span>
+<span class="comment"># 模型：哦，Step 3 的选择逻辑有问题，我需要改进这一步</span></div>
+
+  <p>过程奖励让模型能更快、更精准地学习。OpenAI 的 o1/o3 系列模型就大量使用了过程奖励来训练推理和多步决策能力。</p>
+
+  <div class="insight-box">
+    <span class="icon">🧭</span>
+    <p><strong>Agent 训练的当前趋势：</strong>实践中往往是多种方法混合使用——先用 SFT 让模型学会基本的工具调用格式，再用 RL 或 DPO 在具体任务环境中优化决策质量，最后用过程奖励精调多步推理。这和聊天模型的训练路径（预训练→SFT→RLHF）是一脉相承的，只不过"数据"从对话变成了操作轨迹，"评价标准"从回答质量变成了任务完成率。</p>
+  </div>
+</section>
+
+<!-- ==================== 10. Quiz ==================== -->
+<section>
+  <h2><span class="num">10</span> 检验你的理解</h2>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: Function Calling 的实现原理是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">在模型架构中添加了专门的"工具调用模块"</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">训练模型在需要时输出特定格式（如 JSON）的工具调用指令</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">模型直接连接了外部 API 接口</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！Function Calling 不需要修改模型架构。模型还是在做 Next-Token Prediction，只不过它被训练为"在合适的时候，输出格式化的工具调用 JSON"。外部系统解析这个 JSON，执行工具，再把结果作为文本反馈给模型。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ 模型架构不需要任何改变。Function Calling 本质上是训练模型学会"输出特定格式的文本"——这些文本恰好是 JSON 格式的工具调用指令。系统负责解析和执行。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: RAG 相比直接让模型回答的主要优势是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">模型的推理速度更快</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">基于真实检索文档回答，减少幻觉，知识可动态更新</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">不需要大模型，小模型就能工作</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！RAG 让模型的回答基于真实检索到的文档，而不是从参数记忆中"回忆"。这减少了幻觉，而且只要更新文档库就能更新知识——不需要重新训练模型。还能追溯每个回答的信息来源。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ RAG 实际上比纯模型回答稍慢（多了检索步骤）。它的核心优势是：基于真实文档减少幻觉、知识可更新、可溯源。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: 为什么 Agent 的可靠性随步骤数增加而下降？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">每步都有出错概率，多步的成功率是各步准确率的乘积</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">模型的上下文窗口不够长</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">工具的执行速度变慢了</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！如果每步有 5% 的出错概率（调错工具、传错参数、误解结果），那连续 10 步全对的概率只有 0.95¹⁰ ≈ 60%。这是复合概率的必然规律。解决方法：减少步骤数、提高单步准确率、加入自检和回退机制。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 核心原因是概率的乘法：每步 95% 准确 → 10 步后只剩 60%。错误会随步骤数指数级累积。这和上下文长度或执行速度无关。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: 以下哪个不是 Agent 安全性的核心关注点？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">Agent 可能被恶意用户诱导执行危险操作</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">Agent 可能误判情况导致不可逆操作（如删除文件）</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">Agent 的回答可能不够幽默有趣</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！Agent 安全的核心关注是：① 不被诱导做坏事（注入攻击）；② 不因误判做不可逆操作（权限控制）；③ 操作在用户授权范围内（最小权限原则）。回答是否有趣是体验问题，不是安全问题。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ Agent 的安全问题比聊天机器人严重得多——因为它能执行真实操作。误删文件、发错邮件、被注入攻击利用都是实际威胁。"不够幽默"只是体验问题，不是安全关注点。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">11</span> 编程练习：构建一个迷你 Agent</h2>
+
+  <p>本课的编程练习将让你从零实现一个能调用工具的迷你 Agent 系统。你会看到 Agent Loop 的完整运转——从解析用户意图，到选择工具，到执行并整合结果。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：构建迷你 Agent</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：parse_tool_call()</strong> — 解析模型输出的工具调用<br>
+      <span style="font-size:13px;color:var(--text-dim)">从模型的文本输出中提取工具名称和参数——Agent 的"耳朵"。</span>
+    </p>
+    <p>
+      <strong>任务 2：execute_tool()</strong> — 执行工具并返回结果<br>
+      <span style="font-size:13px;color:var(--text-dim)">根据工具名和参数调用对应的函数——Agent 的"手"。</span>
+    </p>
+    <p>
+      <strong>任务 3：should_use_tool()</strong> — 决策是否需要工具<br>
+      <span style="font-size:13px;color:var(--text-dim)">根据用户问题判断是直接回答还是调用工具——Agent 的"大脑"。</span>
+    </p>
+    <p>
+      <strong>任务 4：format_context()</strong> — 构建工具结果的上下文<br>
+      <span style="font-size:13px;color:var(--text-dim)">把工具返回的结果格式化为模型能理解的 prompt——Agent 的"记忆"。</span>
+    </p>
+    <p>
+      <strong>任务 5：agent_loop()</strong> — 完整的 Agent 循环<br>
+      <span style="font-size:13px;color:var(--text-dim)">把所有组件串起来：接收问题→决策→调用工具→整合结果→回答。完整的 Agent！</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经构建了一个能工作的迷你 Agent！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../07-finetuning/lesson.html">← 上一课：微调与 LoRA</a>
+    <span style="color:var(--text-dim);font-size:14px">🎓 恭喜完成全部课程！</span>
+  </div>
+</section>
+
+</div>
+
+<script>
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

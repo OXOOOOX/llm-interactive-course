@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二课：Embedding 与 Next-Token Prediction</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #6c8cff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(167,139,250,0.15); color: var(--accent2);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent2); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent2); color: #fff; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '📖'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent2); }
+
+  .insight-box {
+    background: rgba(108,140,255,0.08); border: 1px solid rgba(108,140,255,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent2); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent2);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Embedding 2D Canvas ---- */
+  .embed-canvas-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .embed-canvas-wrap h3 { font-size: 18px; margin-bottom: 12px; }
+  #embed-canvas {
+    width: 100%; height: 420px; border-radius: 10px;
+    background: var(--bg); display: block;
+  }
+
+  /* ---- Next-token demo ---- */
+  .ntp-demo {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0;
+  }
+  .ntp-demo h3 { font-size: 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .ntp-context {
+    font-size: 18px; font-weight: 600; margin-bottom: 20px;
+    padding: 14px 18px; border-radius: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+  }
+  .ntp-context .given { color: var(--text); }
+  .ntp-context .predict { color: var(--accent2); background: rgba(167,139,250,0.15); padding: 2px 8px; border-radius: 6px; }
+  .prob-bars { margin: 16px 0; }
+  .prob-bar-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .prob-bar-label {
+    width: 80px; text-align: right;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    color: var(--text); flex-shrink: 0;
+  }
+  .prob-bar-track {
+    flex: 1; height: 28px; background: var(--bg); border-radius: 8px; overflow: hidden; position: relative;
+  }
+  .prob-bar-fill {
+    height: 100%; border-radius: 8px;
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex; align-items: center; padding-left: 10px;
+    font-size: 13px; font-weight: 600; color: #fff;
+  }
+  .prob-bar-pct {
+    width: 50px; text-align: left; font-size: 13px; color: var(--text-dim); flex-shrink: 0;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 120px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent2); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(167,139,250,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent2); background: rgba(167,139,250,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent2); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  /* ---- Settings bar ---- */
+  .settings-bar {
+    max-width: 820px; margin: -20px auto 0; padding: 0 24px;
+    display: flex; justify-content: flex-end; position: relative; z-index: 10;
+  }
+  .toggle-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 16px;
+    font-size: 13px; color: var(--text-dim); cursor: pointer;
+    user-select: none; transition: border-color 0.2s;
+  }
+  .toggle-wrap:hover { border-color: var(--accent2); }
+  .toggle-track {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: var(--border); position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle-track::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-dim); transition: all 0.2s;
+  }
+  .toggle-wrap.active .toggle-track { background: var(--accent2); }
+  .toggle-wrap.active .toggle-track::after { left: 18px; background: #fff; }
+  #code-exercise { transition: opacity 0.3s, max-height 0.4s; }
+  #code-exercise.hidden {
+    opacity: 0; max-height: 0; overflow: hidden; padding: 0; margin: 0;
+    pointer-events: none;
+  }
+
+  /* ---- Highlighter ---- */
+  .hl-mark {
+    background: rgba(251,191,36,0.25);
+    border-bottom: 2px solid rgba(251,191,36,0.6);
+    border-radius: 2px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .hl-mark:hover { background: rgba(251,191,36,0.40); }
+  .hl-mark.color-green { background: rgba(52,211,153,0.25); border-bottom-color: rgba(52,211,153,0.6); }
+  .hl-mark.color-green:hover { background: rgba(52,211,153,0.40); }
+  .hl-mark.color-pink { background: rgba(244,114,182,0.25); border-bottom-color: rgba(244,114,182,0.6); }
+  .hl-mark.color-pink:hover { background: rgba(244,114,182,0.40); }
+  .hl-mark.color-blue { background: rgba(108,140,255,0.25); border-bottom-color: rgba(108,140,255,0.6); }
+  .hl-mark.color-blue:hover { background: rgba(108,140,255,0.40); }
+
+  #hl-toolbar {
+    position: fixed; display: none; z-index: 9999;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 6px 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    gap: 4px; align-items: center;
+  }
+  #hl-toolbar.show { display: flex; }
+  #hl-toolbar button {
+    width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent;
+    cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+  }
+  #hl-toolbar button:hover { transform: scale(1.15); }
+  #hl-toolbar button.yellow { background: rgba(251,191,36,0.5); }
+  #hl-toolbar button.green { background: rgba(52,211,153,0.5); }
+  #hl-toolbar button.pink { background: rgba(244,114,182,0.5); }
+  #hl-toolbar button.blue { background: rgba(108,140,255,0.5); }
+
+  #hl-remove-toolbar {
+    position: fixed; display: none; z-index: 9999;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    font-size: 12px; color: var(--text-dim); cursor: pointer;
+    transition: all 0.15s;
+  }
+  #hl-remove-toolbar:hover { color: var(--red); border-color: var(--red); }
+  #hl-remove-toolbar.show { display: block; }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第二课 · 预训练核心</div>
+  <h1>Embedding 与<br><span>Next-Token Prediction</span></h1>
+  <p>上节课我们把文字拆成了 token，这节课我们要回答两个关键问题：token 怎么变成模型能"理解"的向量？模型的训练目标到底是什么？</p>
+</div>
+
+<div class="settings-bar">
+  <label class="toggle-wrap active" id="code-toggle">
+    <span>配套代码练习</span>
+    <div class="toggle-track"></div>
+  </label>
+</div>
+
+<div class="container">
+
+<!-- ==================== 回顾 ==================== -->
+<section>
+  <h2><span class="num">0</span> 快速回顾：我们在哪里？</h2>
+
+  <p>在第一课中，我们学会了 Tokenization——把文字切分成 token 并映射为整数 ID。现在我们站在这条流水线的下一个节点上：</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">📄</div>
+      <div class="label" style="opacity:0.4">原始文本</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🔤</div>
+      <div class="label" style="opacity:0.4">Tokenization</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent2);box-shadow:0 0 20px rgba(167,139,250,0.3)">📐</div>
+      <div class="label" style="color:var(--accent2)">Embedding</div>
+      <div class="sublabel">本课重点 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.5">🧠</div>
+      <div class="label" style="opacity:0.5">Transformer</div>
+      <div class="sublabel">第三课</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent2);box-shadow:0 0 20px rgba(167,139,250,0.3)">🎯</div>
+      <div class="label" style="color:var(--accent2)">预测下一个 Token</div>
+      <div class="sublabel">本课重点 ★</div>
+    </div>
+  </div>
+
+  <p>本课分两大主题：<span class="hl2">Embedding</span>——把编号变成有语义的向量；以及 <span class="hl2">Next-Token Prediction</span>——大模型唯一的训练任务。理解了这两件事，你就掌握了预训练的核心逻辑。</p>
+</section>
+
+<!-- ==================== 1. 为什么需要 Embedding ==================== -->
+<section>
+  <h2><span class="num">1</span> 为什么 Token ID 不够用？</h2>
+
+  <p>上节课我们得到了一串 Token ID，比如 "我喜欢学AI" → <code>[6423, 8821, 3290, 65, 40]</code>。看起来已经是数字了，可以直接喂给模型了？</p>
+
+  <p><span class="hl-orange">不行。</span>这些 ID 只是字典里的"门牌号"——纯粹的编号，没有任何语义信息。</p>
+
+  <div class="story-card">
+    <h3>门牌号的问题</h3>
+    <p>假设词表中："猫"的 ID 是 5，"狗"的 ID 是 6，"钢筋"的 ID 是 7。</p>
+    <p>从 ID 来看，|6 - 5| = 1，|7 - 6| = 1——"猫"和"狗"的距离，与"狗"和"钢筋"的距离完全一样。但我们知道"猫"和"狗"语义上远比"狗"和"钢筋"更相似——它们都是宠物、都是动物。</p>
+    <p><strong>问题的本质：</strong>一个整数只有一个维度，它无法同时编码一个词的多种属性（是否是动物？是否是名词？情感倾向？使用频率？……）。我们需要一种更丰富的数字表示方式。</p>
+    <p>这就是 Embedding 要解决的问题：<span class="hl">把一个整数 ID 展开成一个高维向量</span>，让每个维度都能承载不同的语义信息。</p>
+  </div>
+</section>
+
+<!-- ==================== 2. Embedding 是什么 ==================== -->
+<section>
+  <h2><span class="num">2</span> Embedding：把编号展开成向量</h2>
+
+  <p>Embedding 的操作其实非常简单——它就是<span class="hl">一个巨大的查找表（lookup table）</span>。</p>
+
+  <p>想象一本"超级字典"：每个 Token ID 对应一行，每行是一个包含几千个浮点数的向量。当模型收到一个 Token ID 时，就去查这本字典，取出对应的那一行向量。</p>
+
+  <div class="code-block"><span class="comment"># Embedding 查找表的核心操作</span>
+<span class="comment"># 假设词表大小 = 50000，向量维度 = 768</span>
+
+embedding_table = 一个 <span class="number">50000</span> × <span class="number">768</span> 的矩阵   <span class="comment"># 这就是模型要"学"的参数</span>
+
+token_id = <span class="number">6423</span>                       <span class="comment"># "我" 的 ID</span>
+vector = embedding_table[<span class="number">6423</span>]         <span class="comment"># 取出第 6423 行 → 得到一个 768 维向量</span>
+
+<span class="comment"># 结果类似：[0.12, -0.34, 0.56, 0.01, ..., -0.23]  （768 个浮点数）</span></div>
+
+  <p>几个关键点：</p>
+
+  <p><span class="hl2">向量维度</span>是一个重要的超参数。GPT-2 用 768 维，GPT-3 用 12288 维，GPT-4 据推测可能更大。维度越高，每个 token 能携带的信息越多，但计算量也越大。你可以把维度理解为"描述一个词需要多少个独立属性"。</p>
+
+  <p><span class="hl2">初始值是随机的</span>。在模型训练开始时，这个表里的数字是随机生成的——此时"猫"和"钢筋"的向量没有任何区别。但随着训练进行，模型会自动调整这些数字，让语义相近的词的向量也彼此接近。这个"自动调整"就是我们常说的"学习"。</p>
+
+  <div class="story-card">
+    <h3>Embedding Table 是怎么"长出来"的？</h3>
+    <p>你可能会好奇：这个装满浮点数的巨大表格，数值到底是哪里来的？答案是——模型自己"学"出来的。整个过程分三个阶段：</p>
+    <p><strong>阶段一：出生（随机初始化）</strong><br>
+    模型刚创建时，Embedding Table 里填满了随机数。此时"猫"的向量可能是 [0.42, -0.13, 0.87, ...]，"狗"的向量是 [-0.56, 0.71, 0.03, ...]——完全没有规律，和语义毫无关系。</p>
+    <p><strong>阶段二：训练（在海量文本中反复调整）</strong><br>
+    在预训练过程中（第 4~6 节会详讲），模型不断做"预测下一个词"的练习。每次预测错误，反向传播算法就会微调所有参数——包括 Embedding Table 里的每一个数字。关键洞察是：因为"猫"和"狗"经常出现在相似的上下文里（"我养了一只___"、"它在沙发上睡觉"……），为了在这些上下文中都做出正确预测，优化过程会自然地让"猫"和"狗"的向量逐步靠近。</p>
+    <p><strong>阶段三：成熟（形成有意义的语义空间）</strong><br>
+    经过在数万亿 token 上的训练后，Table 里的数值趋于稳定。此时语义相近的词在向量空间中自然聚在一起——这不是人类预先设计的，而是优化过程的自然产物。下一节我们会直观看到这种聚类效果。</p>
+  </div>
+
+  <p><span class="hl2">Embedding 层的参数量不小</span>。词表 50000 × 维度 768 = 约 3800 万个参数，这只是整个模型的一小部分，但它是模型"感知世界"的起点。</p>
+
+  <div class="insight-box purple">
+    <span class="icon">💡</span>
+    <p><strong>类比理解向量维度：</strong>用 1 个数字只能描述"大小"。用 2 个数字可以描述"位置"（x, y）。用 3 个数字可以描述"空间位置"（x, y, z）。用 768 个数字呢？可以同时编码一个词的词性、情感倾向、正式程度、领域归属、时态、单复数……等等无数种特征。人类很难直观理解 768 维空间，但数学上它工作得很好。</p>
+  </div>
+</section>
+
+<!-- ==================== 3. Embedding 空间的可视化 ==================== -->
+<section>
+  <h2><span class="num">3</span> 语义空间：意思相近的词靠在一起</h2>
+
+  <p>经过训练后，Embedding 空间会呈现一种神奇的特性：<span class="hl">语义相似的词，在高维空间中彼此距离更近</span>。</p>
+
+  <p>真实的 Embedding 是几千维的，我们无法直接看到。但如果把它"压扁"到 2 维平面上（一种叫 t-SNE 或 PCA 的降维技术），就能看到下面这样的分布——动物聚在一起，食物聚在一起，科技词汇聚在一起：</p>
+
+  <div class="embed-canvas-wrap">
+    <h3>Embedding 空间二维投影（模拟）</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">下面每个圆点代表一个词的 Embedding 向量投影到二维平面的位置。鼠标悬停查看词和它的"邻居"。注意语义相关的词是如何自然聚类的。</p>
+    <canvas id="embed-canvas"></canvas>
+  </div>
+
+  <p>更有趣的是，Embedding 空间中会出现有意义的<span class="hl2">方向</span>。最经典的例子：</p>
+
+  <div class="blockquote">
+    <strong>向量("国王") - 向量("男人") + 向量("女人") ≈ 向量("王后")</strong><br><br>
+    也就是说，"男人→女人"这个方向，和"国王→王后"这个方向，在高维空间中几乎是平行的。模型通过训练自己"发现"了性别这个抽象概念，并且用向量方向来编码它。
+  </div>
+
+  <p>这不是人类设计的——没有人告诉模型"把性别编码在第 137 维上"。这是模型在大量文本中<span class="hl-orange">自动发现的统计规律</span>：因为"国王"和"王后"总是出现在相似的上下文中（"坐在王座上""统治国家"……），只不过一个和"他"共现、一个和"她"共现，模型就学会了用向量方向来表达这种系统性差异。</p>
+
+  <div class="insight-box">
+    <span class="icon">⚡</span>
+    <p><strong>为什么这很重要？</strong>Embedding 是大模型一切能力的基础。模型后续所有的"思考"（Transformer 层的计算）都在这个向量空间中进行。如果 Embedding 没有学好——比如"猫"和"狗"的向量相距甚远——那后面再多的 Transformer 层也难以弥补。可以说，<strong>Embedding 的质量决定了模型理解语义的下限</strong>。</p>
+  </div>
+</section>
+
+<!-- ==================== ✦ Embedding 模型 ==================== -->
+<section>
+  <h2><span class="num">✦</span> 延伸：什么是"Embedding 模型"？</h2>
+
+  <p>你可能在各种地方听说过 OpenAI 的 <code>text-embedding-3-small</code>、开源的 <code>BGE</code>、<code>BERT</code> 等被称为"Embedding 模型"。它们和我们刚讲的 Embedding 层是什么关系？</p>
+
+  <p><span class="hl2">Embedding 层</span>是大语言模型（如 GPT）内部的一个组件——它只是整个模型的"第一步"，负责把 Token ID 转换成向量。向量送入 Transformer 后，最终目的是预测下一个 token。</p>
+
+  <p><span class="hl2">Embedding 模型</span>则是一个<span class="hl">独立的、专门用来生成语义向量的模型</span>。它通常是一个去掉了"预测头"的 Transformer——不负责预测下一个词，而是把输入的一整段文字"压缩"成一个固定长度的向量（比如 1536 维）。</p>
+
+  <div class="code-block"><span class="comment"># 大语言模型中的 Embedding 层（模型内部的一个步骤）</span>
+"今天天气真好" → Token IDs → <span class="keyword">Embedding 层</span> → 向量序列 → Transformer → 预测下一个词
+
+<span class="comment"># 独立的 Embedding 模型（专门输出语义向量）</span>
+"今天天气真好" → Token IDs → Transformer → <span class="keyword">一个向量</span> [0.12, -0.34, ..., 0.56]
+                                              ↑ 这个向量代表整句话的"语义坐标"</div>
+
+  <p>Embedding 模型的核心用途是<span class="hl-orange">把文本变成可以比较的数字</span>。有了语义向量，计算机就能用数学方法衡量"两段文字有多像"——这正是以下应用的基础：</p>
+
+  <div class="insight-box">
+    <span class="icon">🔍</span>
+    <p><strong>Embedding 模型的典型应用：</strong><br>
+    <strong>① 语义搜索：</strong>用户搜"怎么养猫"，即使文档里写的是"猫咪饲养指南"，通过向量相似度也能匹配到——因为两句话的 Embedding 向量非常接近。<br>
+    <strong>② RAG（检索增强生成）：</strong>先用 Embedding 模型从知识库中找到与问题最相关的段落，再喂给大模型生成回答。这就是 ChatGPT 联网搜索和企业知识库问答的基本原理。<br>
+    <strong>③ 文本分类与聚类：</strong>把大量文本转换成向量后，用传统机器学习方法进行自动归类——比如把客服工单自动分到"退款""物流""技术支持"等类别。</p>
+  </div>
+
+  <p>简单记住：大模型里的 Embedding 层是"内部零件"，Embedding 模型是"独立工具"。它们共享相同的核心思想——把文本映射到高维向量空间——但用途和使用方式不同。</p>
+</section>
+
+<!-- ==================== 4. Next-Token Prediction ==================== -->
+<section>
+  <h2><span class="num">4</span> Next-Token Prediction：大模型唯一的训练目标</h2>
+
+  <p>现在来到预训练最核心的概念。如果你这节课只记住一件事，就记住这个：</p>
+
+  <div class="story-card" style="border-color:rgba(167,139,250,0.3)">
+    <h3>大模型预训练的全部任务，就是一件事</h3>
+    <p style="font-size:20px;text-align:center;margin:20px 0"><span class="hl2">给定前面的所有 token，预测下一个 token 最可能是什么。</span></p>
+    <p>就这么简单。没有其他目标、没有其他任务。GPT-3 的 1750 亿个参数、用了几百万美元的训练费用，全部用来学这<strong>一件事</strong>：猜下一个词。</p>
+  </div>
+
+  <p>具体来说，假设训练语料中有一句话"今天天气真好"。模型需要做以下预测：</p>
+
+  <div class="code-block"><span class="comment"># 模型看到的上下文     →  需要预测的下一个 token</span>
+
+<span class="string">"今"</span>                   →  <span class="keyword">天</span>     <span class="comment"># 给了"今"，猜下一个是"天"</span>
+<span class="string">"今 天"</span>                →  <span class="keyword">天</span>     <span class="comment"># 给了"今天"，猜下一个是"天"（天气的天）</span>
+<span class="string">"今 天 天"</span>             →  <span class="keyword">气</span>     <span class="comment"># 给了"今天天"，猜下一个是"气"</span>
+<span class="string">"今 天 天 气"</span>          →  <span class="keyword">真</span>     <span class="comment"># 给了"今天天气"，猜下一个是"真"</span>
+<span class="string">"今 天 天 气 真"</span>       →  <span class="keyword">好</span>     <span class="comment"># 给了"今天天气真"，猜下一个是"好"</span></div>
+
+  <p>注意：<span class="hl">一句话会产生多个训练样本</span>。每个位置都是一个独立的"猜下一个词"任务。这就是为什么大模型的训练效率很高——一句 100 个 token 的话可以产生 99 个训练样本。</p>
+
+  <p>你可能会问：<span class="hl-orange">"就靠猜下一个词，怎么能学会翻译、写代码、做数学？"</span></p>
+
+  <p>这正是 Next-Token Prediction 最深刻的地方。为了准确预测下一个词，模型<strong>不得不</strong>理解非常多的东西：</p>
+
+  <div class="blockquote">
+    为了预测 "巴黎是法国的___" → "首都"<br>
+    → 模型必须学会<strong>地理知识</strong><br><br>
+
+    为了预测 "if x > 0: return___" → 相关的代码逻辑<br>
+    → 模型必须学会<strong>编程语法和逻辑</strong><br><br>
+
+    为了预测 "2 + 3 = ___" → "5"<br>
+    → 模型必须学会<strong>基本算术</strong><br><br>
+
+    为了预测 "他非常难过，因为___" → 合理的原因<br>
+    → 模型必须学会<strong>因果推理和情感理解</strong>
+  </div>
+
+  <p>换句话说：<span class="hl2">Next-Token Prediction 是一个"表面简单但内涵无限"的任务</span>。它迫使模型在学习预测下一个词的过程中，顺便把人类知识的方方面面都内化了。这就是预训练的深刻之处。</p>
+
+  <div class="insight-box purple">
+    <span class="icon">🎯</span>
+    <p><strong>一个精妙的设计：</strong>Next-Token Prediction 是一个<strong>自监督（Self-supervised）</strong>任务——训练数据不需要人工标注。任何一段文本天然就是训练数据：遮住最后一个词，前面的词就是输入，被遮住的就是标签。这意味着整个互联网的文本都可以拿来做训练数据，这是大模型能规模化的根本原因。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. 概率分布与 Softmax ==================== -->
+<section>
+  <h2><span class="num">5</span> 模型如何"猜"：概率分布与 Softmax</h2>
+
+  <p>模型预测下一个 token 时，不是给出一个确定的答案，而是<span class="hl">对词表中的每一个 token 给出一个概率</span>。</p>
+
+  <p>比如给定"今天天气真"，模型可能输出这样的概率分布：</p>
+
+  <div class="ntp-demo">
+    <h3>🎯 Next-Token Prediction 演示</h3>
+    <div class="ntp-context">
+      <span class="given">今天天气真</span> <span class="predict">___?</span>
+    </div>
+    <p style="font-size:14px;color:var(--text-dim);margin-bottom:12px">模型对词表中每个 token 给出的概率（只展示 Top 8）：</p>
+    <div class="prob-bars" id="prob-bars"></div>
+    <p style="font-size:13px;color:var(--text-dim);margin-top:8px">词表中其余 ~50000 个 token 共享剩下的 ~2% 概率</p>
+  </div>
+
+  <p>这个概率分布是怎么算出来的？分两步：</p>
+
+  <p><strong>第一步：Transformer 输出原始分数（logits）。</strong>模型的最后一层会为词表中每个 token 输出一个"分数"——可以是任意实数，正的负的都有。分数越高表示模型觉得这个 token 越可能是下一个。</p>
+
+  <p><strong>第二步：Softmax 把分数变成概率。</strong>原始分数不能直接当概率用（可能是负数，也不一定加起来等于 1）。Softmax 函数的作用是：把任意一组实数转化为一组介于 0~1 之间、且加和为 1 的概率值。数学公式是：</p>
+
+  <div class="code-block"><span class="comment"># Softmax 公式（不用记住，理解直觉就够了）</span>
+
+<span class="keyword">softmax</span>(x_i) = e^(x_i) / Σ e^(x_j)
+
+<span class="comment"># 直觉：先把每个分数"放大"（取指数 e^x），</span>
+<span class="comment"># 然后除以总和，这样所有概率加起来正好等于 1。</span>
+<span class="comment"># 分数越高的 token，概率指数级增大（赢家通吃效果）。</span>
+
+<span class="comment"># 例如：</span>
+logits  = [<span class="number">5.2</span>, <span class="number">3.1</span>, <span class="number">1.0</span>, <span class="number">-0.5</span>]    <span class="comment"># 原始分数</span>
+softmax = [<span class="number">0.85</span>, <span class="number">0.10</span>, <span class="number">0.04</span>, <span class="number">0.01</span>]   <span class="comment"># 转换后的概率（加和 = 1）</span></div>
+
+  <div class="insight-box">
+    <span class="icon">🔑</span>
+    <p><strong>Softmax 的直觉：</strong>它像一个"民主投票放大器"。如果一个选项的分数比其他选项高很多，Softmax 会让它的概率遥遥领先（类似"赢家通吃"）。如果几个选项分数接近，概率也会比较平均（类似"难以抉择"）。这正好反映了语言的特点：有时下一个词几乎确定（"中华人民共和___"），有时有多种合理选择（"我喜欢吃___"）。</p>
+  </div>
+</section>
+
+<!-- ==================== 6. 训练概览 ==================== -->
+<section>
+  <h2><span class="num">6</span> 模型如何从"瞎猜"变成"精准预测"？</h2>
+
+  <p>现在我们知道模型会输出一个概率分布。但在训练初期，由于参数是随机的，模型的预测几乎是瞎猜——比如把 2% 的概率给了正确答案"好"，35% 给了错误的"的"。模型怎么从"瞎猜"进化到"精准预测"的？</p>
+
+  <p>答案是一个不断重复的<span class="hl2">三步循环</span>：</p>
+
+  <div class="story-card" style="border-color:rgba(167,139,250,0.3)">
+    <h3>训练三步走</h3>
+    <p><strong>① 前向传播：</strong>把文本喂给模型，让它预测下一个 token，得到概率分布</p>
+    <p><strong>② 计算损失：</strong>用<span class="hl">交叉熵损失</span>衡量"猜得有多差"——公式是 <code>loss = -log(p)</code>，p 是模型给正确答案的概率。p 越高损失越小，p 越低损失越大。</p>
+    <p><strong>③ 反向传播 + 更新参数：</strong>根据损失信号，用<span class="hl">梯度下降</span>微调每个参数，让下次预测更准。核心公式：<code>参数 = 参数 - 学习率 × 梯度</code></p>
+    <p style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--text-dim)">重复以上三步，几十万次、几百万次……模型就从"什么都不懂"变成了"能写诗能编程"。</p>
+  </div>
+
+  <p>你可能会好奇：梯度是什么？反向传播怎么工作？学习率怎么选？为什么用 -log 而不是别的函数？——这些问题我们会在<a href="../04-training/lesson.html" style="color:var(--accent2);font-weight:600">第四课：训练</a>中详细展开，包括互动演示和数学直觉。</p>
+
+  <p>现在你只需要记住这个核心直觉：</p>
+
+  <div class="insight-box purple">
+    <span class="icon">🔄</span>
+    <p><strong>学习的本质：</strong>每一步的改进微乎其微——把某些参数调高 0.001，某些调低 0.0005。但千万步的微小改进累积起来，模型就从"对所有事情一无所知的随机噪声"变成了"能流利说话、写代码、做数学的强大模型"。量变引起质变。</p>
+  </div>
+</section>
+
+<!-- ==================== 7. 把它们串起来 ==================== -->
+<section>
+  <h2><span class="num">7</span> 把它们串起来：预训练的完整画面</h2>
+
+  <p>现在让我们把本课学的所有概念串成一条完整的链路。预训练就是在不断地重复这个循环：</p>
+
+  <div class="story-card">
+    <h3>一次训练迭代的全过程</h3>
+    <p><strong>Step 1 — Tokenize：</strong>用 BPE Tokenizer 把文本切成 token 序列：["今天", "天气", "真", "好"]</p>
+    <p><strong>Step 2 — 查 Embedding 表：</strong>每个 token ID 查出对应的向量，输入变成了一组高维向量。</p>
+    <p><strong>Step 3 — Transformer 处理：</strong>向量送入 Transformer 网络（下节课详讲），输出每个位置的"预测向量"。</p>
+    <p><strong>Step 4 — 预测 + 计算损失 + 更新参数：</strong>预测向量经过 Softmax 得到概率分布，与正确答案比对得到损失，再通过梯度下降微调参数。（<a href="../04-training/lesson.html" style="color:var(--accent2)">第四课</a>会详细讲解这一步）</p>
+    <p><strong>Step 5 — 重复。</strong>换一批数据，重复上述过程。数百万次迭代后，模型从"瞎猜"变成"预训练完成的基座模型"。</p>
+  </div>
+
+  <div class="insight-box">
+    <span class="icon">🔑</span>
+    <p><strong>本课核心要点总结：</strong><br>
+    ① Embedding 把 Token ID 展开为高维向量，让模型能用"距离"来表达"语义相似性"<br>
+    ② 训练之后，Embedding 空间会自动形成有意义的聚类和方向<br>
+    ③ 预训练的唯一目标是 Next-Token Prediction——给定前文，猜下一个 token<br>
+    ④ 这个看似简单的任务迫使模型内化了语法、知识、推理等能力<br>
+    ⑤ 训练通过"计算损失 → 梯度下降 → 更新参数"的循环不断改进模型（<a href="../04-training/lesson.html" style="color:var(--accent2)">第四课</a>详讲）</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 测验 ==================== -->
+<section>
+  <h2><span class="num">8</span> 检验你的理解</h2>
+  <p>回答下面的问题来检验你对本课内容的掌握。</p>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: 为什么不能直接用 Token ID（整数）作为模型的输入？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">因为整数不能参与数学运算</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">因为整数编号不包含语义信息，无法表达词与词之间的相似关系</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">因为 Token ID 太大了，超出了计算机的处理范围</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！Token ID 只是字典中的门牌号。"猫"=5 和"狗"=6 的编号差距为 1，但"狗"=6 和"钢筋"=7 的差距也是 1——整数编号完全无法反映语义距离。Embedding 向量通过高维空间解决了这个问题。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ 整数当然可以参与运算，也不存在太大的问题。关键在于：一个整数只有一个维度，无法编码丰富的语义信息。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: 大模型预训练的训练目标是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">让模型学会回答人类的问题</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">让模型理解文本的情感倾向</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">给定前面的 token，预测下一个 token 的概率分布</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！Next-Token Prediction 是预训练的唯一目标。"回答问题"和"判断情感"是后训练（SFT/RLHF）阶段才教给模型的。但正是因为预测下一个词需要深刻的语言理解，模型在这个过程中"顺便"学会了各种知识和推理能力。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ "回答问题"和"理解情感"都不是预训练阶段的目标。预训练只做一件事：预测下一个 token。回答问题是后训练（SFT）阶段的任务。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: Embedding 表中的数值最初是怎么来的？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">由语言学家手动设定</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">从字典中直接查出来的</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">随机初始化，然后在训练中自动学出来</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！Embedding 表一开始填满随机数，此时所有词的向量毫无意义。但在训练过程中（不断做 Next-Token Prediction），反向传播会自动调整这些数字，让语义相近的词逐渐在向量空间中聚到一起。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ Embedding 表不是人为设定的，也不来自字典。它从随机数开始，在训练过程中通过梯度下降自动学出有意义的语义向量。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: 为什么 Next-Token Prediction 能让模型学会"知识"？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">因为训练数据中标注了哪些是知识</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">因为准确预测下一个词需要理解上下文中蕴含的事实、逻辑和语法</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">因为模型有一个专门存储知识的模块</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！要预测"巴黎是法国的___"后面是"首都"，模型必须在参数中"记住"巴黎是法国首都这个事实。知识不是显式存储的，而是隐含在模型参数中——参数的某种组合恰好编码了这条知识。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ 预训练数据不需要任何人工标注（这是自监督学习的优势）。模型也没有专门的"知识库"模块。知识是在预测下一个词的过程中隐式学到的。</div>
+  </div>
+</section>
+
+<!-- ==================== 9. 编程练习 ==================== -->
+<section id="code-exercise">
+  <h2><span class="num">9</span> 编程练习：用代码模拟前向传播</h2>
+
+  <p>这节课的编程练习会让你亲手实现从 Token ID 到概率预测的完整前向传播过程（Forward Pass）——这正是大模型每次"猜下一个词"时实际执行的计算链路。</p>
+
+  <p>我们会跳过复杂的 Transformer 部分（那是第三课的内容），用一个简化的线性层代替，但 Embedding 查找、Softmax、交叉熵损失这些核心计算你将完整实现。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：embedding_lookup()</strong> — 根据 Token ID 从 Embedding 矩阵中查出向量<br>
+      <span style="font-size:13px;color:var(--text-dim)">最简单的一步：本质就是用 ID 当索引去矩阵里取一行。但这一步是所有后续计算的起点。</span>
+    </p>
+    <p>
+      <strong>任务 2：cosine_similarity()</strong> — 计算两个向量的余弦相似度<br>
+      <span style="font-size:13px;color:var(--text-dim)">这是衡量"两个词有多像"的标准方法。余弦相似度 = 1 表示方向完全一致，= 0 表示正交，= -1 表示方向相反。</span>
+    </p>
+    <p>
+      <strong>任务 3：softmax()</strong> — 把一组原始分数转化为概率分布<br>
+      <span style="font-size:13px;color:var(--text-dim)">模型输出的 logits 可以是任意实数，Softmax 让它们变成合法的概率（0~1 之间，总和为 1）。</span>
+    </p>
+    <p>
+      <strong>任务 4：cross_entropy_loss()</strong> — 计算交叉熵损失<br>
+      <span style="font-size:13px;color:var(--text-dim)">训练的"评分器"——衡量模型给正确答案的概率有多高。loss 越小说明预测越准。</span>
+    </p>
+    <p>
+      <strong>任务 5：predict_next_token()</strong> — 串联前面的步骤，完成一次完整的前向传播<br>
+      <span style="font-size:13px;color:var(--text-dim)">把 Embedding + 线性层 + Softmax 组合起来，模拟模型预测下一个 token 的完整过程。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了预训练的核心计算链路！
+    </p>
+  </div>
+</section>
+
+<div class="lesson-nav">
+  <a href="../01-tokenization/lesson.html">← 上一课：Tokenization</a>
+  <a href="../03-transformer/lesson.html">下一课：Transformer 架构 →</a>
+</div>
+
+</div>
+
+<!-- Highlighter UI -->
+<div id="hl-toolbar">
+  <button class="yellow" data-color=""></button>
+  <button class="green" data-color="color-green"></button>
+  <button class="pink" data-color="color-pink"></button>
+  <button class="blue" data-color="color-blue"></button>
+</div>
+<div id="hl-remove-toolbar">✕ 移除标注</div>
+
+<script>
+// ============================================================
+// Highlighter — 鼠标划线标注
+// ============================================================
+(function() {
+  const STORAGE_KEY = 'hl-02-embedding';
+  const toolbar = document.getElementById('hl-toolbar');
+  const removeTb = document.getElementById('hl-remove-toolbar');
+  let currentRange = null;
+
+  function getTextPath(node) {
+    const parts = [];
+    let cur = node;
+    while (cur && cur !== document.body) {
+      const parent = cur.parentNode;
+      if (parent) {
+        const siblings = Array.from(parent.childNodes);
+        parts.unshift(siblings.indexOf(cur));
+      }
+      cur = parent;
+    }
+    return parts.join('/');
+  }
+
+  function saveHighlights() {
+    const marks = document.querySelectorAll('.hl-mark');
+    const data = Array.from(marks).map(m => ({
+      text: m.textContent,
+      color: m.className.replace('hl-mark', '').trim(),
+      path: getTextPath(m),
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function applyHighlight(colorClass) {
+    if (!currentRange || currentRange.collapsed) return;
+    const text = currentRange.toString().trim();
+    if (!text) return;
+
+    try {
+      const span = document.createElement('span');
+      span.className = 'hl-mark' + (colorClass ? ' ' + colorClass : '');
+      currentRange.surroundContents(span);
+      bindRemove(span);
+      saveHighlights();
+    } catch (e) {
+      const fragment = currentRange.extractContents();
+      const span = document.createElement('span');
+      span.className = 'hl-mark' + (colorClass ? ' ' + colorClass : '');
+      span.appendChild(fragment);
+      currentRange.insertNode(span);
+      bindRemove(span);
+      saveHighlights();
+    }
+
+    window.getSelection().removeAllRanges();
+    toolbar.classList.remove('show');
+    currentRange = null;
+  }
+
+  function bindRemove(mark) {
+    mark.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const rect = mark.getBoundingClientRect();
+      removeTb.style.left = rect.left + rect.width / 2 - 40 + 'px';
+      removeTb.style.top = rect.top - 36 + 'px';
+      removeTb.classList.add('show');
+      removeTb._target = mark;
+    });
+  }
+
+  removeTb.addEventListener('click', function() {
+    const mark = removeTb._target;
+    if (mark) {
+      const parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+      saveHighlights();
+    }
+    removeTb.classList.remove('show');
+  });
+
+  toolbar.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      applyHighlight(btn.dataset.color);
+    });
+  });
+
+  document.addEventListener('mouseup', function(e) {
+    if (toolbar.contains(e.target)) return;
+    removeTb.classList.remove('show');
+
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+      toolbar.classList.remove('show');
+      currentRange = null;
+      return;
+    }
+
+    const container = document.querySelector('.container');
+    const heroEl = document.querySelector('.hero');
+    const anchor = sel.anchorNode;
+    if (!container.contains(anchor) && !heroEl.contains(anchor)) {
+      toolbar.classList.remove('show');
+      return;
+    }
+
+    currentRange = sel.getRangeAt(0);
+    const rect = currentRange.getBoundingClientRect();
+    toolbar.style.left = rect.left + rect.width / 2 - 60 + 'px';
+    toolbar.style.top = rect.top - 44 + 'px';
+    toolbar.classList.add('show');
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (!toolbar.contains(e.target) && !removeTb.contains(e.target)) {
+      toolbar.classList.remove('show');
+      removeTb.classList.remove('show');
+    }
+  });
+
+  // Restore highlights from localStorage
+  function restoreHighlights() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (!data.length) return;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+      data.forEach(item => {
+        for (const tn of textNodes) {
+          const idx = tn.textContent.indexOf(item.text);
+          if (idx === -1) continue;
+          const range = document.createRange();
+          range.setStart(tn, idx);
+          range.setEnd(tn, idx + item.text.length);
+          const span = document.createElement('span');
+          span.className = 'hl-mark' + (item.color ? ' ' + item.color : '');
+          try {
+            range.surroundContents(span);
+            bindRemove(span);
+          } catch (e) {}
+          break;
+        }
+      });
+    } catch (e) {}
+  }
+
+  restoreHighlights();
+})();
+
+// ============================================================
+// Code exercise toggle
+// ============================================================
+(function() {
+  const KEY = 'llm-course-show-code';
+  const toggle = document.getElementById('code-toggle');
+  const section = document.getElementById('code-exercise');
+  const saved = localStorage.getItem(KEY);
+  let show = saved === null ? true : saved === '1';
+
+  function apply() {
+    toggle.classList.toggle('active', show);
+    section.classList.toggle('hidden', !show);
+  }
+  apply();
+
+  toggle.addEventListener('click', () => {
+    show = !show;
+    localStorage.setItem(KEY, show ? '1' : '0');
+    apply();
+  });
+})();
+
+// ============================================================
+// Embedding 2D visualization
+// ============================================================
+const wordGroups = {
+  '动物': { color: '#34d399', words: [
+    { text: '猫', x: 0.15, y: 0.25 }, { text: '狗', x: 0.18, y: 0.30 },
+    { text: '兔子', x: 0.12, y: 0.20 }, { text: '老虎', x: 0.22, y: 0.35 },
+    { text: '狮子', x: 0.25, y: 0.33 }, { text: '鸟', x: 0.10, y: 0.18 },
+  ]},
+  '食物': { color: '#fb923c', words: [
+    { text: '米饭', x: 0.55, y: 0.15 }, { text: '面条', x: 0.58, y: 0.20 },
+    { text: '饺子', x: 0.52, y: 0.22 }, { text: '蛋糕', x: 0.62, y: 0.12 },
+    { text: '苹果', x: 0.48, y: 0.18 }, { text: '牛肉', x: 0.60, y: 0.25 },
+  ]},
+  '科技': { color: '#6c8cff', words: [
+    { text: 'AI', x: 0.80, y: 0.55 }, { text: '算法', x: 0.78, y: 0.60 },
+    { text: '模型', x: 0.82, y: 0.50 }, { text: 'GPU', x: 0.85, y: 0.62 },
+    { text: '芯片', x: 0.88, y: 0.58 }, { text: '代码', x: 0.75, y: 0.52 },
+  ]},
+  '情感': { color: '#f472b6', words: [
+    { text: '快乐', x: 0.30, y: 0.70 }, { text: '开心', x: 0.33, y: 0.73 },
+    { text: '悲伤', x: 0.42, y: 0.75 }, { text: '愤怒', x: 0.45, y: 0.80 },
+    { text: '感动', x: 0.35, y: 0.68 }, { text: '兴奋', x: 0.28, y: 0.75 },
+  ]},
+  '国家': { color: '#fbbf24', words: [
+    { text: '中国', x: 0.65, y: 0.72 }, { text: '美国', x: 0.70, y: 0.70 },
+    { text: '日本', x: 0.68, y: 0.76 }, { text: '法国', x: 0.72, y: 0.78 },
+    { text: '英国', x: 0.74, y: 0.74 }, { text: '德国', x: 0.67, y: 0.80 },
+  ]},
+};
+
+const canvas = document.getElementById('embed-canvas');
+const ctx = canvas.getContext('2d');
+let hoveredWord = null;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width - 48;
+  canvas.height = 420;
+}
+
+function drawEmbedding() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = 40;
+  const areaW = W - pad * 2, areaH = H - pad * 2;
+
+  for (const [group, data] of Object.entries(wordGroups)) {
+    const cx = data.words.reduce((s, w) => s + w.x, 0) / data.words.length;
+    const cy = data.words.reduce((s, w) => s + w.y, 0) / data.words.length;
+    ctx.beginPath();
+    ctx.arc(pad + cx * areaW, pad + cy * areaH, 55, 0, Math.PI * 2);
+    ctx.fillStyle = data.color + '10';
+    ctx.fill();
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = data.color + '80';
+    ctx.textAlign = 'center';
+    ctx.fillText(group, pad + cx * areaW, pad + cy * areaH - 48);
+  }
+
+  for (const [group, data] of Object.entries(wordGroups)) {
+    for (const w of data.words) {
+      const px = pad + w.x * areaW;
+      const py = pad + w.y * areaH;
+      const isHovered = hoveredWord === w.text;
+      const r = isHovered ? 8 : 5;
+
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = isHovered ? data.color : data.color + 'aa';
+      ctx.fill();
+
+      if (isHovered) {
+        ctx.beginPath();
+        ctx.arc(px, py, 16, 0, Math.PI * 2);
+        ctx.strokeStyle = data.color + '40';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.font = isHovered ? 'bold 14px system-ui' : '12px system-ui';
+      ctx.fillStyle = isHovered ? '#fff' : '#e4e6f0cc';
+      ctx.textAlign = 'center';
+      ctx.fillText(w.text, px, py - 10);
+    }
+  }
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const pad = 40;
+  const areaW = canvas.width - pad * 2, areaH = canvas.height - pad * 2;
+
+  hoveredWord = null;
+  for (const data of Object.values(wordGroups)) {
+    for (const w of data.words) {
+      const px = pad + w.x * areaW, py = pad + w.y * areaH;
+      if (Math.hypot(mx - px, my - py) < 20) { hoveredWord = w.text; break; }
+    }
+    if (hoveredWord) break;
+  }
+  drawEmbedding();
+});
+
+canvas.addEventListener('mouseleave', () => { hoveredWord = null; drawEmbedding(); });
+resizeCanvas();
+drawEmbedding();
+window.addEventListener('resize', () => { resizeCanvas(); drawEmbedding(); });
+
+// ============================================================
+// Next-Token Prediction probability bars
+// ============================================================
+const probData = [
+  { token: '好', prob: 0.42, color: '#a78bfa' },
+  { token: '棒', prob: 0.18, color: '#6c8cff' },
+  { token: '不', prob: 0.12, color: '#22d3ee' },
+  { token: '差', prob: 0.08, color: '#34d399' },
+  { token: '好的', prob: 0.06, color: '#fbbf24' },
+  { token: '冷', prob: 0.05, color: '#fb923c' },
+  { token: '热', prob: 0.04, color: '#f472b6' },
+  { token: '糟糕', prob: 0.03, color: '#f87171' },
+];
+
+const probBarsEl = document.getElementById('prob-bars');
+probData.forEach((d, i) => {
+  const row = document.createElement('div');
+  row.className = 'prob-bar-row';
+  row.innerHTML = `
+    <div class="prob-bar-label">${d.token}</div>
+    <div class="prob-bar-track">
+      <div class="prob-bar-fill" style="width:0%;background:${d.color}" id="bar-${i}"></div>
+    </div>
+    <div class="prob-bar-pct" id="pct-${i}">0%</div>
+  `;
+  probBarsEl.appendChild(row);
+});
+
+setTimeout(() => {
+  probData.forEach((d, i) => {
+    const bar = document.getElementById(`bar-${i}`);
+    const pct = document.getElementById(`pct-${i}`);
+    bar.style.width = `${d.prob * 100}%`;
+    pct.textContent = `${(d.prob * 100).toFixed(0)}%`;
+  });
+}, 300);
+
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

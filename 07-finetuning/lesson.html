@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第七课：微调与 LoRA — 用少量数据定制你的模型</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #f472b6;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(244,114,182,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(244,114,182,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+  .hl-cyan { color: var(--cyan); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '🔧'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(244,114,182,0.08); border: 1px solid rgba(244,114,182,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.green { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.2); }
+  .insight-box.orange { background: rgba(251,146,60,0.08); border-color: rgba(251,146,60,0.2); }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 110px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(244,114,182,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- LoRA visual ---- */
+  .lora-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; text-align: center;
+  }
+  .lora-visual h3 { font-size: 18px; margin-bottom: 20px; text-align: left; }
+  .lora-diagram {
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    flex-wrap: wrap; margin: 20px 0;
+  }
+  .lora-box {
+    padding: 16px 24px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    text-align: center; min-width: 120px;
+  }
+  .lora-plus { font-size: 24px; font-weight: 700; color: var(--text-dim); }
+  .lora-arrow { font-size: 20px; color: var(--text-dim); }
+
+  /* ---- Compare table ---- */
+  .compare-table {
+    width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;
+  }
+  .compare-table th, .compare-table td {
+    padding: 12px 16px; border: 1px solid var(--border); text-align: center;
+  }
+  .compare-table th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  .compare-table td { background: var(--surface2); }
+  .compare-table tr:hover td { background: rgba(244,114,182,0.05); }
+
+  /* ---- Method cards ---- */
+  .method-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+  .method-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; transition: all 0.3s;
+  }
+  .method-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .method-card .card-icon { font-size: 28px; margin-bottom: 8px; }
+  .method-card .card-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .method-card .card-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(244,114,182,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    .compare-table { font-size: 12px; }
+    .compare-table th, .compare-table td { padding: 8px; }
+    .method-cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第七课 · 模型定制</div>
+  <h1>微调与 LoRA<br><span>用少量数据定制你的模型</span></h1>
+  <p>不是每个人都能从零训练一个大模型。但每个人都可以拿一个开源模型，用自己的数据微调它——让它变成你的专属助手：懂你的业务、说你的语言、符合你的风格。这节课揭开"站在巨人肩膀上"的秘密。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 为什么微调 ==================== -->
+<section>
+  <h2><span class="num">0</span> 为什么需要微调？</h2>
+
+  <p>通用大模型（如 GPT-4、Claude、LLaMA）已经很强了，但它们的"通用"既是优势也是局限：</p>
+
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li>不了解你的业务领域（如公司内部文档、特定行业术语）</li>
+    <li>输出风格可能不符合你的需求（太啰嗦、太正式、太随意……）</li>
+    <li>某些垂直任务表现不够好（如特定格式的数据提取、特殊领域的问答）</li>
+    <li>商业 API 有隐私顾虑——你不想把公司数据发给第三方</li>
+  </ul>
+
+  <p><span class="hl">微调（Fine-tuning）</span>就是用你自己的数据，在已有模型基础上"继续训练"——让模型在你关心的任务上变得更好，而不需要从零开始。</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.5">🌐</div>
+      <div class="label" style="opacity:0.5">开源 Base Model</div>
+      <div class="sublabel">LLaMA / Qwen / Mistral</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(244,114,182,0.3)">🔧</div>
+      <div class="label" style="color:var(--accent)">微调</div>
+      <div class="sublabel">你的数据 + LoRA ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--green)">🎯</div>
+      <div class="label">你的专属模型</div>
+      <div class="sublabel">领域专家</div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>类比：</strong>预训练 = 大学四年通识教育（学了所有基础知识）。微调 = 入职后的专业培训（用公司的案例、流程、标准来训练你做这份具体工作）。不需要重新读大学——只需要几天的培训就能快速上手。</p>
+  </div>
+</section>
+
+<!-- ==================== 1. 全量微调 ==================== -->
+<section>
+  <h2><span class="num">1</span> 全量微调：最直接的方法</h2>
+
+  <p><span class="hl">全量微调（Full Fine-tuning）</span>就是在你的数据上继续训练，更新模型的<strong>所有参数</strong>。方法和预训练完全一样——只是数据不同，而且通常用更小的学习率。</p>
+
+  <div class="code-block"><span class="comment"># 全量微调的流程：</span>
+
+<span class="comment"># 1. 加载预训练模型（所有参数）</span>
+model = load_pretrained(<span class="string">"llama-3-8b"</span>)   <span class="comment"># 8B 参数全部加载</span>
+
+<span class="comment"># 2. 准备你的微调数据</span>
+dataset = [
+  {<span class="string">"input"</span>: <span class="string">"总结这份合同的关键条款"</span>, <span class="string">"output"</span>: <span class="string">"1.付款条件..."</span>},
+  {<span class="string">"input"</span>: <span class="string">"这个客诉该如何处理"</span>, <span class="string">"output"</span>: <span class="string">"根据公司政策..."</span>},
+  ...  <span class="comment"># 通常需要几百到几万条</span>
+]
+
+<span class="comment"># 3. 用较小的学习率训练（避免"忘记"预训练知识）</span>
+optimizer = Adam(lr=<span class="number">2e-5</span>)   <span class="comment"># 比预训练 (3e-4) 小 10-15 倍</span>
+train(model, dataset, epochs=<span class="number">3</span>)
+
+<span class="comment"># 4. 保存微调后的模型</span>
+model.save(<span class="string">"my-legal-assistant"</span>)   <span class="comment"># 保存全部 8B 参数</span></div>
+
+  <p><strong>全量微调的问题：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl-orange">显存需求巨大</span>——8B 模型全量微调需要 ~60GB 显存（参数 + 梯度 + 优化器状态）</li>
+    <li><span class="hl-orange">存储昂贵</span>——每个微调版本都要保存完整的 8B 参数（~16GB 文件）</li>
+    <li><span class="hl-orange">灾难性遗忘</span>——可能在学习新知识的同时忘掉旧知识</li>
+    <li><span class="hl-orange">过拟合风险</span>——数据少时容易"背答案"而不是学到能力</li>
+  </ul>
+
+  <p>这些问题催生了一个更优雅的解决方案——参数高效微调。</p>
+</section>
+
+<!-- ==================== 2. LoRA ==================== -->
+<section>
+  <h2><span class="num">2</span> LoRA：低秩适配的魔法</h2>
+
+  <p><span class="hl">LoRA（Low-Rank Adaptation）</span>是目前最流行的参数高效微调方法。它的核心思想极其优雅：<span class="hl-green">不修改原始参数，而是在旁边加一个"小旁路"来学习新知识</span>。</p>
+
+  <div class="lora-visual">
+    <h3>🧩 LoRA 的结构</h3>
+    <div class="lora-diagram">
+      <div class="lora-box" style="background:rgba(108,140,255,0.15);border:2px solid var(--accent2);color:var(--accent2)">
+        原始权重 W<br><span style="font-size:12px;color:var(--text-dim)">d×d (冻结不动)</span>
+      </div>
+      <div class="lora-plus">+</div>
+      <div class="lora-box" style="background:rgba(244,114,182,0.15);border:2px solid var(--accent);color:var(--accent)">
+        LoRA: B × A<br><span style="font-size:12px;color:var(--text-dim)">d×r × r×d (可训练)</span>
+      </div>
+      <div class="lora-arrow">→</div>
+      <div class="lora-box" style="background:rgba(52,211,153,0.15);border:2px solid var(--green);color:var(--green)">
+        输出 = Wx + BAx<br><span style="font-size:12px;color:var(--text-dim)">原始 + 适配</span>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--text-dim);margin-top:12px">W 是 4096×4096 的大矩阵（~6700万参数），而 B×A 只有 4096×16 + 16×4096（~13万参数）。训练参数量减少 500 倍！</p>
+  </div>
+
+  <div class="code-block"><span class="comment"># LoRA 的数学原理：</span>
+
+<span class="comment"># 原始前向：output = W × x</span>
+<span class="comment"># LoRA 前向：output = W × x + (B × A) × x</span>
+
+<span class="comment"># W: 原始权重矩阵 (d_model × d_model)，如 4096×4096</span>
+<span class="comment"># A: 降维矩阵 (r × d_model)，如 16×4096</span>
+<span class="comment"># B: 升维矩阵 (d_model × r)，如 4096×16</span>
+<span class="comment"># r: 秩 (rank)，通常 4~64，远小于 d_model</span>
+
+<span class="comment"># 参数量对比（LLaMA-7B 的一个注意力层）：</span>
+原始 W_Q: <span class="number">4096</span> × <span class="number">4096</span> = <span class="number">16,777,216</span> 参数
+LoRA (r=<span class="number">16</span>): <span class="number">4096</span> × <span class="number">16</span> + <span class="number">16</span> × <span class="number">4096</span> = <span class="number">131,072</span> 参数
+<span class="comment"># 只有原来的 0.78%！</span>
+
+<span class="comment"># 整个 7B 模型使用 LoRA (r=16, 作用于 Q/V)：</span>
+<span class="comment"># 可训练参数 ≈ 4M（原始 7B 的 0.06%）</span>
+<span class="comment"># LoRA 权重文件只有 ~16MB（对比全量的 14GB）</span></div>
+
+  <p><strong>为什么 LoRA 能工作？</strong>关键假设是<span class="hl">低秩假设</span>：微调时需要的"改变量"（ΔW）是低秩的——它不需要改变权重矩阵的每一个元素，只需要在少数几个"方向"上做调整。就像调整一架钢琴的音色，你不需要重新铸造每根弦——只需要微调几个关键的螺丝。</p>
+
+  <div class="insight-box green">
+    <span class="icon">🎯</span>
+    <p><strong>LoRA 的优势：</strong>① 显存需求大幅降低（8B 模型用单张 24GB GPU 就能微调）；② 存储极小（每个微调版本只有几十 MB）；③ 可以快速切换——同一个 base 模型配不同的 LoRA 权重就变成不同的"专家"；④ 不修改原始参数，天然避免灾难性遗忘。</p>
+  </div>
+</section>
+
+<!-- ==================== 3. QLoRA ==================== -->
+<section>
+  <h2><span class="num">3</span> QLoRA：在消费级 GPU 上微调大模型</h2>
+
+  <p><span class="hl">QLoRA</span> = 量化 + LoRA。核心思想：<span class="hl-green">把 base 模型用 4-bit 量化加载到显存中，然后只训练 LoRA 的小参数</span>。</p>
+
+  <div class="code-block"><span class="comment"># QLoRA 的魔法组合：</span>
+
+<span class="comment"># 1. Base 模型用 4-bit 量化加载（省显存）</span>
+model = load_4bit(<span class="string">"llama-3-70b"</span>)    <span class="comment"># 70B 参数只占 ~35GB</span>
+
+<span class="comment"># 2. 在量化的模型上挂 LoRA 适配器（可训练）</span>
+lora = LoRA(rank=<span class="number">16</span>, target=[<span class="string">"q_proj"</span>, <span class="string">"v_proj"</span>])
+
+<span class="comment"># 3. 只有 LoRA 参数参与梯度计算</span>
+<span class="comment"># base 模型的量化参数完全冻结</span>
+<span class="comment"># 梯度只流过 LoRA 的小矩阵</span>
+
+<span class="comment"># 显存对比（微调 LLaMA-7B）：</span>
+全量微调:     ~60 GB   <span class="comment"># 需要 A100 80GB</span>
+LoRA:         ~26 GB   <span class="comment"># 需要 A100 40GB 或 RTX 4090</span>
+QLoRA (4bit): ~10 GB   <span class="comment"># RTX 3090/4080 就够了！</span>
+
+<span class="comment"># 微调 70B 模型：</span>
+全量微调:     ~500 GB  <span class="comment"># 需要 8×A100</span>
+QLoRA:        ~48 GB   <span class="comment"># 单张 A100 80GB 就够！</span></div>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>方法</th><th>可训练参数</th><th>显存需求 (7B)</th><th>效果</th><th>适用场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>全量微调</td><td>100%</td><td>~60GB</td><td>最好</td><td>有充足算力</td></tr>
+      <tr><td>LoRA</td><td>~0.1%</td><td>~26GB</td><td>接近全量</td><td>主流方案</td></tr>
+      <tr><td>QLoRA</td><td>~0.1%</td><td>~10GB</td><td>略有损失</td><td>消费级 GPU</td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight-box orange">
+    <span class="icon">🔥</span>
+    <p><strong>QLoRA 的意义：</strong>它把微调大模型的门槛从"企业级数据中心"降到了"一张消费级显卡"。一个研究生用一张 RTX 4090 就能微调 7B 模型，用一张 A100 就能微调 70B 模型。这是开源 LLM 生态爆发的关键推动力之一。</p>
+  </div>
+</section>
+
+<!-- ==================== 4. 微调数据 ==================== -->
+<section>
+  <h2><span class="num">4</span> 微调数据：质量 > 数量</h2>
+
+  <p>微调成功的关键是<span class="hl">高质量的训练数据</span>。和预训练的"大力出奇迹"不同，微调用少量精心准备的数据就能达到好效果。</p>
+
+  <div class="code-block"><span class="comment"># 微调数据的典型格式（Alpaca/ShareGPT 格式）：</span>
+
+[
+  {
+    <span class="string">"instruction"</span>: <span class="string">"将以下客户反馈分类为：积极/消极/中性"</span>,
+    <span class="string">"input"</span>: <span class="string">"你们的快递太慢了，等了整整一周！"</span>,
+    <span class="string">"output"</span>: <span class="string">"分类：消极\n原因：客户对物流速度不满，等待时间超出预期。\n建议处理：致歉+查询物流+提供补偿方案"</span>
+  },
+  {
+    <span class="string">"instruction"</span>: <span class="string">"根据以下症状，给出初步的分诊建议"</span>,
+    <span class="string">"input"</span>: <span class="string">"患者女，35岁，持续头痛三天，伴有恶心"</span>,
+    <span class="string">"output"</span>: <span class="string">"初步建议：\n1. 建议挂神经内科\n2. 可能需要 CT/MRI 排除器质性病变\n3. 注意是否有视力模糊等伴随症状\n紧急程度：中等"</span>
+  }
+]
+
+<span class="comment"># 数据量参考：</span>
+<span class="comment"># 简单任务（格式转换、分类）：100-500 条</span>
+<span class="comment"># 中等任务（特定领域问答）：1000-5000 条</span>
+<span class="comment"># 复杂任务（通用对话风格）：5000-50000 条</span></div>
+
+  <p><strong>数据准备的几个关键原则：</strong></p>
+
+  <div class="story-card">
+    <h3>📝 微调数据的黄金法则</h3>
+    <p><strong>① 质量第一</strong>——100 条高质量数据 > 10000 条低质量数据。每条数据应该是你希望模型输出的"完美示例"。</p>
+    <p><strong>② 多样性</strong>——覆盖各种输入变体。如果你想让模型处理客诉，数据中要包含各种语气、各种问题类型。</p>
+    <p><strong>③ 一致性</strong>——所有数据的输出格式和风格应该统一。如果有的数据简洁有的啰嗦，模型不知道该学哪种。</p>
+    <p><strong>④ 真实分布</strong>——训练数据应该反映实际使用中会遇到的输入分布。不要只准备"简单"的例子。</p>
+  </div>
+
+  <div class="insight-box blue">
+    <span class="icon">⚠️</span>
+    <p><strong>常见错误：</strong>很多人以为"数据越多越好"就疯狂堆量——用 GPT-4 生成几万条数据来微调小模型。但如果生成的数据质量不高或和你的实际场景不匹配，反而会让模型变差。永远优先保证数据质量和真实性。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. 其他 PEFT 方法 ==================== -->
+<section>
+  <h2><span class="num">5</span> 其他参数高效微调方法</h2>
+
+  <p>LoRA 不是唯一的选择。参数高效微调（PEFT）是一个活跃的研究领域，有多种方法各有千秋：</p>
+
+  <div class="method-cards">
+    <div class="method-card">
+      <div class="card-icon">🔌</div>
+      <div class="card-title">Adapter</div>
+      <div class="card-desc">在 Transformer 层之间插入小型网络模块。每个 Adapter 只有几百万参数。LoRA 的"前辈"。</div>
+    </div>
+    <div class="method-card">
+      <div class="card-icon">📌</div>
+      <div class="card-title">Prefix Tuning</div>
+      <div class="card-desc">在输入前面加一组可训练的"虚拟 token"向量。不修改模型参数，只优化这些前缀。</div>
+    </div>
+    <div class="method-card">
+      <div class="card-icon">🎚️</div>
+      <div class="card-title">IA³</div>
+      <div class="card-desc">对 K/V/FFN 的激活值乘以可学习的缩放因子。参数量比 LoRA 还少，但效果场景更有限。</div>
+    </div>
+    <div class="method-card">
+      <div class="card-icon">🧬</div>
+      <div class="card-title">DoRA</div>
+      <div class="card-desc">LoRA 的改进：把权重分解为"幅度"和"方向"，分别微调。在某些任务上优于 LoRA。</div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="comment"># LoRA 的超参数选择指南：</span>
+
+<span class="keyword">rank (r)</span>:
+  r = <span class="number">8</span>:   最小配置，适合简单任务
+  r = <span class="number">16</span>:  通用推荐值，性价比最高
+  r = <span class="number">64</span>:  复杂任务，接近全量微调效果
+  r = <span class="number">256</span>: 极致效果，但参数量显著增加
+
+<span class="keyword">alpha (α)</span>:
+  通常设为 rank 的 2 倍，即 α = 2r
+  <span class="comment"># α 控制 LoRA 的"影响强度"：实际缩放 = α / r</span>
+
+<span class="keyword">target modules</span>:
+  最小配置: [<span class="string">"q_proj"</span>, <span class="string">"v_proj"</span>]         <span class="comment"># 只作用于 Q 和 V</span>
+  推荐配置: [<span class="string">"q_proj"</span>, <span class="string">"k_proj"</span>, <span class="string">"v_proj"</span>, <span class="string">"o_proj"</span>]  <span class="comment"># 全部注意力层</span>
+  完整配置: + [<span class="string">"gate_proj"</span>, <span class="string">"up_proj"</span>, <span class="string">"down_proj"</span>]  <span class="comment"># + FFN 层</span></div>
+</section>
+
+<!-- ==================== 6. 过拟合与正则化 ==================== -->
+<section>
+  <h2><span class="num">6</span> 过拟合：微调的最大敌人</h2>
+
+  <p>微调的数据量通常很小（几百到几万条），而模型的参数量动辄几十亿。这极度不平衡的比例意味着<span class="hl-orange">过拟合（Overfitting）</span>是微调中最常见的问题。</p>
+
+  <div class="code-block"><span class="comment"># 过拟合的表现：</span>
+
+<span class="comment"># 训练 Loss 持续下降（甚至接近 0）</span>
+<span class="comment"># 但验证集/实际使用效果越来越差</span>
+
+Epoch 1: train_loss=<span class="number">1.5</span>, val_loss=<span class="number">1.6</span>   <span class="comment"># 正常 ✓</span>
+Epoch 2: train_loss=<span class="number">0.8</span>, val_loss=<span class="number">1.1</span>   <span class="comment"># 在变好 ✓</span>
+Epoch 3: train_loss=<span class="number">0.3</span>, val_loss=<span class="number">1.0</span>   <span class="comment"># 间隙在拉大 ⚠️</span>
+Epoch 5: train_loss=<span class="number">0.05</span>, val_loss=<span class="number">1.8</span>  <span class="comment"># 严重过拟合 ✗</span>
+
+<span class="comment"># 直觉：模型"背"住了训练数据</span>
+<span class="comment"># 给它训练中见过的输入 → 完美输出</span>
+<span class="comment"># 给它没见过的输入 → 胡说八道</span></div>
+
+  <p><strong>防止过拟合的方法：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl2">Early Stopping</span>——监控验证集 loss，开始上升时就停止训练</li>
+    <li><span class="hl2">小学习率</span>——lr=1e-5 到 5e-5，避免参数偏离太远</li>
+    <li><span class="hl2">少训练几轮</span>——通常 1-3 个 epoch 就够，多了容易过拟合</li>
+    <li><span class="hl2">LoRA 本身就是正则化</span>——限制了可学习的"自由度"，天然抗过拟合</li>
+    <li><span class="hl2">数据增强</span>——对输入做改写、变换，增加多样性</li>
+    <li><span class="hl2">Dropout</span>——LoRA 中加 dropout（如 0.05）随机关闭部分连接</li>
+  </ul>
+
+  <div class="insight-box purple">
+    <span class="icon">🎯</span>
+    <p><strong>微调的"甜蜜点"：</strong>微调的最佳训练时长通常远比你想象的短。对于大多数任务，1-3 个 epoch 就是最佳区间。很多人看到 loss 还在降就继续训练——这是陷阱。val loss 不降反升的那个点就是你应该停下的地方。</p>
+  </div>
+</section>
+
+<!-- ==================== 7. 实战工具 ==================== -->
+<section>
+  <h2><span class="num">7</span> 实战工具链</h2>
+
+  <p>微调不需要从零写训练代码。成熟的工具链让你只需准备好数据，几行配置就能开始训练：</p>
+
+  <div class="code-block"><span class="comment"># 方案 1: Hugging Face transformers + PEFT（最灵活）</span>
+
+<span class="keyword">from</span> transformers <span class="keyword">import</span> AutoModelForCausalLM
+<span class="keyword">from</span> peft <span class="keyword">import</span> LoraConfig, get_peft_model
+
+model = AutoModelForCausalLM.from_pretrained(<span class="string">"meta-llama/Llama-3-8B"</span>, load_in_4bit=True)
+lora_config = LoraConfig(r=<span class="number">16</span>, lora_alpha=<span class="number">32</span>, target_modules=[<span class="string">"q_proj"</span>,<span class="string">"v_proj"</span>])
+model = get_peft_model(model, lora_config)
+<span class="comment"># 然后用 Trainer 正常训练即可</span>
+
+
+<span class="comment"># 方案 2: LLaMA-Factory（最简单，适合新手）</span>
+<span class="comment"># 只需写一个 YAML 配置文件：</span>
+
+model_name: meta-llama/Llama-3-8B
+finetuning_type: lora
+lora_rank: <span class="number">16</span>
+dataset: my_custom_data
+num_train_epochs: <span class="number">3</span>
+learning_rate: <span class="number">2e-4</span>
+quantization_bit: <span class="number">4</span>
+
+<span class="comment"># 一行命令启动：llamafactory-cli train config.yaml</span>
+
+
+<span class="comment"># 方案 3: Unsloth（最快，优化到极致）</span>
+<span class="comment"># 号称比 HuggingFace 快 2-5×，显存省 60%</span>
+<span class="comment"># 适合资源有限的场景</span></div>
+
+  <div class="insight-box green">
+    <span class="icon">🛠️</span>
+    <p><strong>推荐路径：</strong>初学者推荐 LLaMA-Factory——它有 Web UI，数据格式简单，支持各种模型和方法。进阶用户用 HuggingFace transformers + PEFT——灵活度最高，能定制一切。追求极致性能用 Unsloth。无论选哪个，核心流程都是一样的：准备数据 → 选择配置 → 开始训练 → 评估效果。</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 评估 ==================== -->
+<section>
+  <h2><span class="num">8</span> 如何评估微调效果？</h2>
+
+  <p>微调后怎么知道模型变好了还是变差了？评估是微调中经常被忽视但极为重要的环节。</p>
+
+  <div class="code-block"><span class="comment"># 评估方法层次：</span>
+
+<span class="keyword">1. Loss 曲线</span>（基础）
+   - 训练 loss 应该下降
+   - 验证 loss 应该下降且不反弹
+   - 两者差距不应太大（否则过拟合）
+
+<span class="keyword">2. 任务指标</span>（定量）
+   - 分类任务：准确率、F1
+   - 生成任务：BLEU、ROUGE（但这些指标对 LLM 价值有限）
+   - 代码任务：pass@k（生成的代码能否通过测试）
+
+<span class="keyword">3. 人工评估</span>（最可靠）
+   - 准备 50-100 个代表性测试问题
+   - 对比微调前后的输出质量
+   - 让人打分：有用性、准确性、格式、安全性
+
+<span class="keyword">4. A/B 对比</span>（最终裁决）
+   - 在实际用户中分流测试
+   - 微调后的模型 vs 微调前的模型
+   - 看用户满意度和任务完成率</div>
+
+  <p><strong>一个常见的评估陷阱：</strong>"在训练数据类似的问题上测试"。如果你的测试集和训练集太相似，过拟合的模型也会拿高分。好的测试集应该包含模型没见过的变体、边界情况、和对抗性输入。</p>
+</section>
+
+<!-- ==================== 9. Quiz ==================== -->
+<section>
+  <h2><span class="num">9</span> 检验你的理解</h2>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: LoRA 的核心思想是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">删除模型中不重要的参数，只保留关键部分</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">冻结原始参数，在旁边加一对低秩矩阵作为可训练的"旁路"</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">把大模型压缩成小模型再训练</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！LoRA 不删除也不压缩原始参数，而是在每个目标层旁边加一对小矩阵 A 和 B。原始权重完全冻结，只训练这对小矩阵。推理时输出 = Wx + BAx。因为 rank 很小（如 16），B×A 的参数量远小于 W。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ LoRA 不是剪枝也不是压缩。它保留完整的原始参数不动，额外加一对低秩矩阵（B和A）作为可学习的适配器。output = Wx + BAx，其中 W 冻结，只训练 B 和 A。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: QLoRA 相比 LoRA 的额外优化是什么？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">把冻结的 base 模型用 4-bit 量化加载，大幅减少显存占用</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">把 LoRA 的 rank 进一步降低到 1</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">让 LoRA 只作用于第一层和最后一层</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！QLoRA 的 "Q" 就是 Quantized。反正 base 模型的参数是冻结的不需要梯度，那为什么还要用 16 位存它？4 位就够了！这样 70B 模型只占 ~35GB 显存，单张 A100 就能装下并微调。LoRA 参数本身仍然用高精度训练。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ QLoRA 的核心创新是对 base 模型做 4-bit 量化。既然这些参数是冻结不训练的，用低精度存储完全没问题。这让大模型微调的显存需求降低 3-4 倍。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: 微调时发现训练 loss 很低但实际输出很差，最可能的原因是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">学习率太小</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">过拟合——模型"背"住了训练数据但没学到泛化能力</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">模型太小，容量不够</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！训练 loss 低 + 实际效果差 = 典型的过拟合。模型在训练数据上"作弊"了——记住了具体答案而不是学会了解决问题的能力。解决方案：减少训练轮数、增加数据多样性、用更大的 LoRA dropout、或者监控验证集 loss 及时停止。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 训练 loss 已经很低了，说明模型有足够的容量，学习率也不是问题。问题在于它"学过头了"——在训练集上表现完美，但在新数据上泛化不行。这就是过拟合。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: 微调 7B 模型通常需要多少训练数据？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">至少 100 万条，越多越好</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">几百到几万条高质量数据就足够（取决于任务复杂度）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">只需要 10 条示例</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！微调的核心是让预训练模型"适应"新的任务格式或领域——它已经有知识了，只需要少量高质量示例来"定向"。简单任务（如分类）可能 100-500 条就够，复杂任务（如通用对话）可能需要上万条。但质量永远比数量重要。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ 微调不是预训练——它不需要从零学知识，只需要学"如何在你的场景中应用已有知识"。这只需要相对少量的高质量数据。具体数量取决于任务复杂度，从几百到几万条不等。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">10</span> 编程练习：实现 LoRA 微调</h2>
+
+  <p>本课的编程练习将让你从零实现 LoRA 的核心机制——你会看到一个简单的低秩分解如何在不修改原始权重的情况下让模型学会新能力。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：实现 LoRA 微调</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：lora_forward()</strong> — 实现 LoRA 的前向传播<br>
+      <span style="font-size:13px;color:var(--text-dim)">output = Wx + (B×A)x——在原始输出上叠加低秩适配。</span>
+    </p>
+    <p>
+      <strong>任务 2：count_parameters()</strong> — 统计参数量对比<br>
+      <span style="font-size:13px;color:var(--text-dim)">对比原始矩阵 vs LoRA 适配器的参数数量，体会"参数高效"有多高效。</span>
+    </p>
+    <p>
+      <strong>任务 3：lora_gradient()</strong> — 计算 LoRA 参数的梯度<br>
+      <span style="font-size:13px;color:var(--text-dim)">只对 A 和 B 求梯度，原始权重 W 完全不参与梯度计算。</span>
+    </p>
+    <p>
+      <strong>任务 4：lora_training_step()</strong> — 执行一步 LoRA 训练<br>
+      <span style="font-size:13px;color:var(--text-dim)">前向→损失→梯度→更新 A 和 B（W 保持不变）。</span>
+    </p>
+    <p>
+      <strong>任务 5：lora_finetune()</strong> — 完整的 LoRA 微调循环<br>
+      <span style="font-size:13px;color:var(--text-dim)">在一组数据上反复训练，观察模型如何通过小小的 LoRA 学会新的映射关系。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了 LoRA 微调的核心机制！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../06-inference/lesson.html">← 上一课：推理优化</a>
+    <a href="../08-agents/lesson.html">下一课：Agent 与工具调用 →</a>
+  </div>
+</section>
+
+</div>
+
+<script>
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

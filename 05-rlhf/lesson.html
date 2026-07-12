@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第五课：RLHF 与对齐 — 让模型"听话"</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #a78bfa;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(167,139,250,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+  .hl-pink { color: var(--pink); font-weight: 600; }
+  .hl-cyan { color: var(--cyan); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '🎭'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.green { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.2); }
+  .insight-box.orange { background: rgba(251,146,60,0.08); border-color: rgba(251,146,60,0.2); }
+  .insight-box.pink { background: rgba(244,114,182,0.08); border-color: rgba(244,114,182,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 120px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(167,139,250,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- Comparison cards ---- */
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0;
+  }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; position: relative; overflow: hidden;
+  }
+  .compare-card.bad { border-color: rgba(248,113,113,0.3); }
+  .compare-card.bad::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--red); }
+  .compare-card.good { border-color: rgba(52,211,153,0.3); }
+  .compare-card.good::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--green); }
+  .compare-card h4 { font-size: 14px; margin-bottom: 8px; }
+  .compare-card p { font-size: 13px; margin: 0; color: var(--text-dim); }
+
+  /* ---- RLHF pipeline visual ---- */
+  .rlhf-pipeline {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0;
+  }
+  .rlhf-pipeline h3 { font-size: 20px; margin-bottom: 20px; text-align: center; }
+  .rlhf-steps { display: flex; flex-direction: column; gap: 16px; }
+  .rlhf-step {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 20px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg);
+    transition: all 0.3s;
+  }
+  .rlhf-step:hover { border-color: var(--accent); transform: translateX(4px); }
+  .rlhf-step .step-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; flex-shrink: 0;
+  }
+  .rlhf-step .step-content { flex: 1; }
+  .rlhf-step .step-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .rlhf-step .step-desc { font-size: 13px; color: var(--text-dim); }
+  .rlhf-connector { text-align: center; color: var(--text-dim); font-size: 20px; }
+
+  /* ---- Preference demo ---- */
+  .pref-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .pref-demo h3 { font-size: 18px; margin-bottom: 16px; }
+  .pref-question { font-size: 14px; color: var(--cyan); font-weight: 600; margin-bottom: 12px; padding: 12px 16px; background: rgba(34,211,238,0.08); border-radius: 8px; }
+  .pref-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pref-option {
+    padding: 16px; border-radius: 10px; border: 2px solid var(--border);
+    cursor: pointer; transition: all 0.2s; font-size: 13px; line-height: 1.5;
+  }
+  .pref-option:hover { border-color: var(--accent); }
+  .pref-option.selected-good { border-color: var(--green); background: rgba(52,211,153,0.08); }
+  .pref-option.selected-bad { border-color: var(--red); background: rgba(248,113,113,0.08); }
+  .pref-option .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+  .pref-feedback { margin-top: 12px; font-size: 13px; color: var(--text-dim); display: none; padding: 12px; border-radius: 8px; background: var(--bg); }
+  .pref-feedback.show { display: block; }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(167,139,250,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .pref-options { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第五课 · 对齐与安全</div>
+  <h1>RLHF 与对齐<br><span>让模型"听话"</span></h1>
+  <p>上节课我们学了如何通过预训练让模型掌握语言能力。但预训练出来的模型只是一个"知识渊博但不懂交流"的知识库——它会续写文本，但不会回答问题、不懂拒绝危险请求、也不知道什么才叫"好的回答"。这节课，我们揭开从"能说话"到"说好话"的秘密。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 回顾 ==================== -->
+<section>
+  <h2><span class="num">0</span> 快速回顾：预训练完成后……</h2>
+
+  <p>经过前四课，我们了解了一个模型从零训练到具备语言能力的全过程。但预训练结束后的 Base Model 和你日常使用的 ChatGPT/Claude 之间还有巨大的鸿沟：</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🧠</div>
+      <div class="label" style="opacity:0.4">预训练</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(167,139,250,0.3)">📋</div>
+      <div class="label" style="color:var(--accent)">SFT</div>
+      <div class="sublabel">监督微调 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(167,139,250,0.3)">🏆</div>
+      <div class="label" style="color:var(--accent)">RLHF</div>
+      <div class="sublabel">人类反馈强化学习 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--green)">💬</div>
+      <div class="label">Chat Model</div>
+      <div class="sublabel">可以交付用户</div>
+    </div>
+  </div>
+
+  <p>本课的核心问题：<span class="hl">如何把一个"补全文本"的模型变成一个"有用、无害、诚实"的对话助手？</span></p>
+</section>
+
+<!-- ==================== 1. 预训练模型的问题 ==================== -->
+<section>
+  <h2><span class="num">1</span> 预训练模型有什么问题？</h2>
+
+  <p>Base Model（预训练模型）的训练目标是"预测下一个 token"——它学会了语言的统计规律，拥有了大量知识。但这个目标和"做一个有用的助手"之间有巨大的 gap：</p>
+
+  <div class="compare-grid">
+    <div class="compare-card bad">
+      <h4>❌ Base Model 的典型行为</h4>
+      <p><strong>用户：</strong>法国的首都是哪里？</p>
+      <p><strong>模型：</strong>法国的首都是哪里？这是一个常见的地理题目。接下来我们看第二题：德国的首都是哪里？第三题……</p>
+      <p style="margin-top:8px;color:var(--red);font-size:12px">→ 它在"续写考试题"而不是"回答问题"</p>
+    </div>
+    <div class="compare-card good">
+      <h4>✅ 对齐后模型的行为</h4>
+      <p><strong>用户：</strong>法国的首都是哪里？</p>
+      <p><strong>模型：</strong>法国的首都是巴黎（Paris）。巴黎位于法国北部的塞纳河畔，是欧洲最大的城市之一。</p>
+      <p style="margin-top:8px;color:var(--green);font-size:12px">→ 直接回答，简洁有用</p>
+    </div>
+  </div>
+
+  <div class="compare-grid">
+    <div class="compare-card bad">
+      <h4>❌ Base Model 的危险行为</h4>
+      <p><strong>用户：</strong>如何制造炸弹？</p>
+      <p><strong>模型：</strong>制造炸弹需要以下材料……首先将硝酸铵……</p>
+      <p style="margin-top:8px;color:var(--red);font-size:12px">→ 没有任何安全过滤，有问必答</p>
+    </div>
+    <div class="compare-card good">
+      <h4>✅ 对齐后模型的行为</h4>
+      <p><strong>用户：</strong>如何制造炸弹？</p>
+      <p><strong>模型：</strong>抱歉，我不能提供制造爆炸物的信息。这类活动是违法的，可能造成严重伤害。如果你有安全相关的疑虑，建议联系当地执法部门。</p>
+      <p style="margin-top:8px;color:var(--green);font-size:12px">→ 拒绝有害请求，给出建设性建议</p>
+    </div>
+  </div>
+
+  <p>预训练模型的核心问题总结：</p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl-orange">不知道自己的角色</span>——它以为自己是在补全文本，不是在回答问题</li>
+    <li><span class="hl-orange">没有安全边界</span>——训练数据里什么都有，它也什么都会说</li>
+    <li><span class="hl-orange">不知道什么是"好"回答</span>——详细 vs 简洁？正式 vs 随意？它不知道</li>
+    <li><span class="hl-orange">会编造事实</span>——预测下一个 token ≠ 说真话，它会自信地"幻觉"</li>
+  </ul>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>核心矛盾：</strong>"预测下一个 token"是一个<strong>模仿</strong>目标——模仿训练数据中的文本模式。但我们想要的是一个<strong>有价值判断</strong>的助手——知道什么该说、什么不该说、怎么说最好。这两个目标之间需要一座桥梁，这就是"对齐（Alignment）"要做的事。</p>
+  </div>
+</section>
+
+<!-- ==================== 2. SFT ==================== -->
+<section>
+  <h2><span class="num">2</span> 第一步：监督微调（SFT）</h2>
+
+  <p><span class="hl">监督微调（Supervised Fine-Tuning）</span>是对齐的第一步：用人工编写的"标准对话"示例来教模型"应该怎么回答"。</p>
+
+  <p>具体做法很直接：</p>
+
+  <div class="code-block"><span class="comment"># SFT 训练数据的格式：</span>
+
+[
+  {
+    <span class="string">"instruction"</span>: <span class="string">"用通俗语言解释什么是光合作用"</span>,
+    <span class="string">"response"</span>: <span class="string">"光合作用是植物利用阳光将二氧化碳和水转化为葡萄糖和氧气的过程。你可以把植物想象成一个'太阳能厨房'——用阳光当能量，把空气中的二氧化碳和根部吸收的水'烹饪'成食物（葡萄糖），同时释放出我们呼吸的氧气。"</span>
+  },
+  {
+    <span class="string">"instruction"</span>: <span class="string">"写一首关于秋天的五言绝句"</span>,
+    <span class="string">"response"</span>: <span class="string">"黄叶随风舞，\n寒霜染远山。\n雁归天际外，\n秋意满人间。"</span>
+  },
+  ...
+]
+
+<span class="comment"># 训练方式：和预训练完全一样（Next-Token Prediction）</span>
+<span class="comment"># 只是训练数据从"互联网文本"变成了"人工编写的高质量对话"</span>
+<span class="comment"># 模型学会了：看到问题 → 直接回答（而不是续写更多问题）</span></div>
+
+  <p><strong>SFT 数据集的规模：</strong>通常几千到几万条高质量对话——远小于预训练的万亿 token。但它的作用巨大：<span class="hl">教会模型"用什么格式和风格来响应用户"</span>。</p>
+
+  <div class="insight-box green">
+    <span class="icon">🎯</span>
+    <p><strong>SFT 的直觉：</strong>预训练就像让一个学生读了整个图书馆，什么都懂但不知道怎么当老师。SFT 就像给他看几千个"好老师回答学生问题"的示例——他很快就学会了"哦，原来学生问问题时我应该这样回答"。学习<strong>格式和风格</strong>只需要少量示例，因为知识在预训练中已经有了。</p>
+  </div>
+
+  <p>SFT 之后，模型已经能正常对话了。但还有一个根本问题没解决：<span class="hl-orange">什么才叫"好"的回答？</span></p>
+  <p>人工写的 SFT 数据代表的是标注者认为的好回答，但不同人对"好"的标准不同。而且很多情况下写出一个完美回答很难——但<strong>比较两个回答哪个更好</strong>却容易得多。这就引出了下一步。</p>
+</section>
+
+<!-- ==================== 3. 奖励模型 ==================== -->
+<section>
+  <h2><span class="num">3</span> 第二步：训练奖励模型（Reward Model）</h2>
+
+  <p>RLHF 的关键创新是：<span class="hl">不直接告诉模型"正确答案"是什么，而是训练一个"评委"来打分</span>。这个评委就是奖励模型（Reward Model）。</p>
+
+  <p><strong>训练数据的收集：</strong></p>
+
+  <div class="code-block"><span class="comment"># 1. 给模型一个问题，让它生成两个不同的回答</span>
+问题: <span class="string">"解释什么是黑洞"</span>
+
+回答 A: <span class="string">"黑洞是时空中引力极强的区域，连光都无法逃逸。它通常由大质量恒星坍缩形成。"</span>
+回答 B: <span class="string">"黑洞很可怕，它会把一切都吸进去，包括你的灵魂和梦想。科学家说银河系中心有一个超级大黑洞随时可能吞噬地球。"</span>
+
+<span class="comment"># 2. 让人类标注者判断哪个更好：</span>
+人类判断: A > B <span class="comment"># A 准确客观，B 耸人听闻且有错误</span>
+
+<span class="comment"># 3. 用大量这样的"偏好对"来训练奖励模型</span>
+<span class="comment"># 奖励模型学会给"好回答"高分、"差回答"低分</span></div>
+
+  <p><strong>奖励模型的训练目标：</strong>让好回答的得分高于差回答。</p>
+
+  <div class="code-block"><span class="comment"># 奖励模型的训练损失：</span>
+
+loss = -log(sigmoid(reward(好回答) - reward(差回答)))
+
+<span class="comment"># 直觉：让 reward(好) 尽可能大于 reward(差)</span>
+<span class="comment"># sigmoid 把差值映射到 (0,1)，-log 把它变成损失</span>
+<span class="comment"># 和交叉熵类似：差距越大 → loss 越小</span></div>
+
+  <div class="pref-demo">
+    <h3>🤔 互动体验：你来当标注者</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">在 RLHF 中，人类标注者需要比较两个回答。试试看你会怎么选：</p>
+
+    <div id="pref-container"></div>
+  </div>
+
+  <div class="insight-box blue">
+    <span class="icon">⚖️</span>
+    <p><strong>为什么用"比较"而不是"打分"？</strong>让人给一个回答打绝对分（比如 7/10）是很主观、不稳定的。但比较"A和B哪个更好"却容易得多——人的相对判断远比绝对判断一致。所以奖励模型的训练数据是一对一对的偏好比较，而不是单独打分。</p>
+  </div>
+
+  <div class="story-card">
+    <h3>📊 偏好数据从哪里来？</h3>
+    <p><strong>① 数据收集流程</strong></p>
+    <p>首先，从真实场景或标注平台收集各种用户问题（Prompt）。对每个问题，让 SFT 后的模型生成 4-9 个不同的回答（通过调整温度参数或采样策略获得多样性）。然后把这些回答两两配对，交给人类标注员判断哪个更好。</p>
+
+    <p style="margin-top:12px"><strong>② 标注员是谁？</strong></p>
+    <p>主要来自专业的数据标注公司和众包平台（如 Scale AI、Surge AI、Amazon Mechanical Turk）。OpenAI、Anthropic 等大公司也有自己的内部标注团队。标注前会进行培训，统一标准——什么是"有用"、什么是"无害"、什么是"诚实"。</p>
+
+    <p style="margin-top:12px"><strong>③ 规模有多大？</strong></p>
+    <p>训练一个奖励模型通常需要 <strong>10万~50万对偏好数据</strong>。LLaMA-2 的论文提到他们用了超过 100 万对人工偏好数据。按每对需要 30 秒~2 分钟标注计算，这需要数千人天的标注工作量。</p>
+
+    <p style="margin-top:12px"><strong>④ 质量控制</strong></p>
+    <p>同一对回答会让多个标注员独立标注（通常 3-5 人），计算标注一致性（agreement rate）。如果一致率低，说明这对回答的优劣不明显，或者标注标准不清晰，会被过滤或重新设计。</p>
+
+    <p style="margin-top:12px;color:var(--text-dim);font-size:14px">💡 有趣的是，标注者之间的一致性通常只有 60-70%——这说明"好回答"的标准本身就有主观性。但这比绝对打分的一致性（通常低于 50%）已经高很多了。</p>
+  </div>
+</section>
+
+<!-- ==================== 4. RLHF ==================== -->
+<section>
+  <h2><span class="num">4</span> 第三步：用强化学习优化模型（RLHF）</h2>
+
+  <p>有了奖励模型这个"评委"，就可以用 <span class="hl">强化学习（Reinforcement Learning）</span> 来让模型的回答越来越好。</p>
+
+  <p>具体流程：</p>
+
+  <div class="code-block"><span class="comment"># RLHF 的训练循环（使用 PPO 算法）：</span>
+
+<span class="keyword">for</span> step <span class="keyword">in</span> range(训练步数):
+    <span class="comment"># 1. 从问题池中取一个问题</span>
+    question = sample_question()
+
+    <span class="comment"># 2. 让当前模型生成一个回答</span>
+    answer = model.generate(question)
+
+    <span class="comment"># 3. 让奖励模型打分</span>
+    reward = reward_model.score(question, answer)
+
+    <span class="comment"># 4. 用 PPO 算法更新模型：</span>
+    <span class="comment">#    奖励高 → 增加生成这个回答的概率</span>
+    <span class="comment">#    奖励低 → 降低生成这个回答的概率</span>
+    model.update(question, answer, reward)
+
+<span class="comment"># 本质：模型通过不断试错，学会生成"评委打高分"的回答</span></div>
+
+  <p>但这里有一个关键约束——<span class="hl">KL 散度惩罚</span>：</p>
+
+  <div class="code-block"><span class="comment"># 实际的奖励函数：</span>
+
+actual_reward = reward_model_score - β × KL(当前模型 ‖ SFT模型)
+
+<span class="comment"># KL 散度衡量当前模型和 SFT 模型的"偏离程度"</span>
+<span class="comment"># β 控制约束强度</span>
+
+<span class="comment"># 为什么需要这个约束？</span>
+<span class="comment"># 没有它，模型会"hack"奖励模型——</span>
+<span class="comment"># 找到一些奖励模型打高分但实际很差的回答</span>
+<span class="comment"># （比如反复重复"这是一个好问题"来骗分）</span>
+<span class="comment"># KL 惩罚防止模型走得太远、变得"不像话"</span></div>
+
+  <div class="insight-box">
+    <span class="icon">🎮</span>
+    <p><strong>强化学习的类比：</strong>想象训练一只狗做新技巧。预训练 = 狗学会了所有基本动作（坐、站、跑）。SFT = 给狗看"好狗"的演示视频。RLHF = 真正的训练过程：狗尝试做动作 → 主人给奖励（对了给零食）或不给奖励 → 狗逐渐学会什么动作能得到主人的认可。奖励模型 = 主人的偏好（什么行为好、什么行为坏）。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. DPO ==================== -->
+<section>
+  <h2><span class="num">5</span> DPO：更简单的对齐方法</h2>
+
+  <!-- ---- 5.1 RLHF 为什么难 ---- -->
+  <h3 style="font-size:20px;margin-top:12px;margin-bottom:16px;color:var(--accent)">5.1 RLHF 的麻烦在哪？</h3>
+
+  <p>上一节的 RLHF（PPO）虽然有效，但工程上非常痛苦。来看看它有多复杂：</p>
+
+  <div class="code-block"><span class="comment"># RLHF 训练时需要同时运行 4 个模型：</span>
+
+<span class="keyword">① 策略模型 (Policy)</span>    <span class="comment">← 就是你要训练的那个模型</span>
+<span class="keyword">② 参考模型 (Reference)</span>  <span class="comment">← SFT 模型的一份冻结副本，用来计算 KL 惩罚</span>
+<span class="keyword">③ 奖励模型 (Reward)</span>    <span class="comment">← 单独训练的"评委"，需要额外的训练流程</span>
+<span class="keyword">④ 价值模型 (Value)</span>     <span class="comment">← PPO 算法需要的辅助模型，估计每步的"价值"</span>
+
+<span class="comment"># 训练时的流程（每一步）：</span>
+<span class="comment"># 1. 策略模型生成回答         ← 需要在线推理，很慢</span>
+<span class="comment"># 2. 奖励模型给回答打分       ← 又一次推理</span>
+<span class="comment"># 3. 参考模型算 KL 惩罚       ← 又一次推理</span>
+<span class="comment"># 4. 价值模型估计 baseline    ← 又一次推理</span>
+<span class="comment"># 5. PPO 算法更新策略和价值模型</span>
+
+<span class="comment"># 一个 70B 的模型 × 4 份 ≈ 需要同时放 280B 参数在 GPU 上</span>
+<span class="comment"># 这不仅费钱，而且超参数极其敏感——学习率、KL 系数、PPO clip 范围</span>
+<span class="comment"># 哪个设错了都可能训崩</span></div>
+
+  <p>简单说：RLHF 又贵又脆弱。有没有办法<span class="hl-orange">绕开这些复杂性</span>，但达到同样的效果？</p>
+
+  <!-- ---- 5.2 DPO 的核心想法 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">5.2 DPO 的核心想法：跳过中间人</h3>
+
+  <p>2023 年，斯坦福大学的研究者提出了 <span class="hl">DPO（Direct Preference Optimization，直接偏好优化）</span>。它的核心洞见可以用一句话概括：</p>
+
+  <div class="story-card" style="border-color:rgba(52,211,153,0.3)">
+    <h3 style="color:var(--green)">DPO 的关键洞见</h3>
+    <p style="font-size:18px;text-align:center;margin:20px 0"><span class="hl-green">我们根本不需要单独训练一个奖励模型——<br>语言模型本身就可以当奖励模型用！</span></p>
+    <p style="text-align:center;color:var(--text-dim)">DPO 论文证明了：RLHF 的最优解等价于一个简单的监督学习问题。<br>不需要强化学习，不需要奖励模型，直接拿偏好数据训就行。</p>
+  </div>
+
+  <p>用类比来理解 RLHF 和 DPO 的区别：</p>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4 style="color:var(--orange)">RLHF 的做法</h4>
+      <p>就像学做菜：<br>
+      ① 先请一个<strong>美食评委</strong>（奖励模型）<br>
+      ② 然后你不断做菜给评委品尝<br>
+      ③ 评委说"这道好 / 这道差"<br>
+      ④ 你根据评委的反馈改进<br><br>
+      <span style="color:var(--orange)">问题：培训一个靠谱的评委本身就很难</span></p>
+    </div>
+    <div class="compare-card">
+      <h4 style="color:var(--green)">DPO 的做法</h4>
+      <p>更聪明的学做菜：<br>
+      ① 直接给你看两道菜的<strong>对比照片</strong><br>
+      ② 告诉你"左边这道更好"<br>
+      ③ 你自己分析左边好在哪里<br>
+      ④ 直接学习"好菜"的特点<br><br>
+      <span style="color:var(--green)">优势：跳过了"培训评委"这一步</span></p>
+    </div>
+  </div>
+
+  <!-- ---- 5.3 DPO 损失函数拆解 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">5.3 DPO 的损失函数：一行公式的直觉拆解</h3>
+
+  <p>DPO 的损失函数看起来有点长，但拆开来看每一部分都有清晰的含义。别被符号吓到——我们一步一步来。</p>
+
+  <p><strong>先看完整公式：</strong></p>
+
+  <div class="code-block">loss = -log( sigmoid( β × ( <span class="keyword">Δ好</span> - <span class="keyword">Δ差</span> ) ) )
+
+其中:
+  <span class="keyword">Δ好</span> = log( π(好回答) / π_ref(好回答) )
+  <span class="keyword">Δ差</span> = log( π(差回答) / π_ref(差回答) )
+
+  π     = 当前正在训练的模型
+  π_ref = 参考模型（SFT 模型，固定不变）
+  β     = 控制"多激进"的温度参数</div>
+
+  <p><strong>现在逐层拆解：</strong></p>
+
+  <p><span class="hl2">第一层：π(回答) / π_ref(回答) —— "相对概率"</span></p>
+
+  <div class="blockquote">
+    π(好回答) 是当前模型生成"好回答"的概率。<br>
+    π_ref(好回答) 是 SFT 模型生成"好回答"的概率。<br><br>
+    π / π_ref 就是"当前模型比 SFT 模型<strong>更倾向于</strong>生成这个回答的程度"。<br>
+    <strong>比值 > 1</strong> → 当前模型更喜欢这个回答（概率比 SFT 高了）<br>
+    <strong>比值 < 1</strong> → 当前模型不太喜欢这个回答（概率比 SFT 低了）<br>
+    <strong>比值 = 1</strong> → 和 SFT 一样，没有偏好变化
+  </div>
+
+  <p>为什么要和 SFT 模型比，而不直接看绝对概率？因为这起到了 <span class="hl">KL 惩罚的作用</span>——和 RLHF 中的 KL 散度异曲同工。如果模型只提高了好回答的绝对概率，可能是通过"变得更极端"来实现的；但如果看的是<strong>相对变化</strong>，就要求模型在保持整体行为不崩的前提下，有针对性地调整偏好。</p>
+
+  <p><span class="hl2">第二层：Δ好 - Δ差 —— "好坏之间的偏好差距"</span></p>
+
+  <div class="blockquote">
+    Δ好 = 模型对"好回答"的倾向性变化<br>
+    Δ差 = 模型对"差回答"的倾向性变化<br><br>
+    Δ好 - Δ差 就是"模型是否在<strong>拉大好坏之间的差距</strong>"。<br><br>
+    <strong>这个差 > 0</strong> → 模型相比 SFT，更偏好好回答了。损失会变小。<br>
+    <strong>这个差 < 0</strong> → 模型反而更偏好差回答了。损失会变大！<br>
+    <strong>这个差 = 0</strong> → 模型的偏好没有改变。还需要继续学。
+  </div>
+
+  <p><span class="hl2">第三层：-log(sigmoid(...)) —— 把差距变成损失</span></p>
+
+  <p>这一层的作用和第二课学的交叉熵损失完全一样——把"好坏差距"转换为一个损失值：差距越大损失越小，差距越小（或反向）损失越大。</p>
+
+  <div class="code-block"><span class="comment"># 用具体数字感受一下：</span>
+
+<span class="comment"># 情况 1：模型学得很好</span>
+Δ好 = <span class="number">+2.0</span>    <span class="comment">← 模型大幅提高了好回答的概率</span>
+Δ差 = <span class="number">-1.0</span>    <span class="comment">← 模型降低了差回答的概率</span>
+差距 = <span class="number">2.0</span> - (<span class="number">-1.0</span>) = <span class="number">3.0</span>   <span class="comment">← 差距很大</span>
+loss = -log(sigmoid(<span class="number">3.0</span>)) = <span class="number">0.05</span>  <span class="comment">← 损失很小 ✓</span>
+
+<span class="comment"># 情况 2：模型还没学</span>
+Δ好 = <span class="number">+0.1</span>
+Δ差 = <span class="number">+0.05</span>
+差距 = <span class="number">0.1</span> - <span class="number">0.05</span> = <span class="number">0.05</span>        <span class="comment">← 差距很小</span>
+loss = -log(sigmoid(<span class="number">0.05</span>)) = <span class="number">0.67</span>  <span class="comment">← 损失较大，需要继续学</span>
+
+<span class="comment"># 情况 3：模型学反了！</span>
+Δ好 = <span class="number">-0.5</span>    <span class="comment">← 好回答的概率反而降低了</span>
+Δ差 = <span class="number">+1.0</span>    <span class="comment">← 差回答的概率反而提高了</span>
+差距 = <span class="number">-0.5</span> - <span class="number">1.0</span> = <span class="number">-1.5</span>       <span class="comment">← 方向完全错了</span>
+loss = -log(sigmoid(<span class="number">-1.5</span>)) = <span class="number">1.74</span>  <span class="comment">← 损失很大！重罚 ✗</span></div>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>一句话总结 DPO 在做什么：</strong>让模型看一对"好回答"和"差回答"，然后调整参数，使得模型相比起点（SFT）<strong>更倾向于生成好回答、更不倾向于生成差回答</strong>。如果做到了，损失变小；做反了，损失变大。就这样。</p>
+  </div>
+
+  <!-- ---- 5.4 β 参数 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">5.4 β 参数：控制"学习的激进程度"</h3>
+
+  <p>公式里的 β（beta）控制模型对偏好信号的敏感度。直觉上：</p>
+
+  <div class="code-block"><span class="comment"># β 的作用：</span>
+
+<span class="keyword">β 很大</span>（如 0.5）→ 模型对偏好差距非常敏感
+  → 稍微的偏好差异就会被放大
+  → 学得快，但容易过拟合（"矫枉过正"）
+  → 类似考试改卷时"扣分很严"
+
+<span class="keyword">β 很小</span>（如 0.05）→ 模型对偏好差距不太敏感
+  → 需要很大的偏好差距才会产生显著的梯度
+  → 学得慢，但更稳健
+  → 类似改卷时"扣分很松"
+
+<span class="comment"># 常用值：0.1 ~ 0.5</span>
+<span class="comment"># 实践中通常从 0.1 开始调</span></div>
+
+  <!-- ---- 5.5 对比 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">5.5 DPO vs RLHF：全面对比</h3>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4 style="color:var(--orange)">RLHF (PPO)</h4>
+      <p>• 需要单独训练奖励模型<br>
+      • 训练时要在线生成回答（慢）<br>
+      • 同时跑 4 个模型（费显存）<br>
+      • 超参数敏感，容易训崩<br>
+      • 理论上上限更高（可持续探索）<br>
+      • 需要强化学习知识</p>
+    </div>
+    <div class="compare-card">
+      <h4 style="color:var(--green)">DPO</h4>
+      <p>• ❌ 不需要奖励模型<br>
+      • ❌ 不需要在线生成回答<br>
+      • 只需 2 个模型（省一半显存）<br>
+      • 稳定，像普通监督学习一样好调<br>
+      • 实际效果和 RLHF 接近或持平<br>
+      • 只需要会写 loss 就行</p>
+    </div>
+  </div>
+
+  <p>用代码对比一下训练流程的复杂度差异：</p>
+
+  <div class="code-block"><span class="comment"># RLHF 训练一步（伪代码，感受复杂度）：</span>
+
+answer = policy_model.generate(question)       <span class="comment"># 在线生成（慢！）</span>
+reward = reward_model.score(question, answer)   <span class="comment"># 奖励模型打分</span>
+ref_logp = ref_model.log_prob(question, answer) <span class="comment"># 参考模型算概率</span>
+kl_penalty = policy_logp - ref_logp             <span class="comment"># 计算 KL 惩罚</span>
+value = value_model.estimate(question, answer)  <span class="comment"># 价值模型估计</span>
+advantage = reward - kl_penalty - value         <span class="comment"># 计算优势函数</span>
+ppo_update(policy_model, advantage, clip=<span class="number">0.2</span>)  <span class="comment"># PPO 更新</span>
+value_model.update(...)                         <span class="comment"># 更新价值模型</span>
+
+<span class="comment"># ——————————————————————————————</span>
+
+<span class="comment"># DPO 训练一步（感受简单度）：</span>
+
+logp_good = model.log_prob(question, good_answer)
+logp_bad  = model.log_prob(question, bad_answer)
+ref_logp_good = ref_model.log_prob(question, good_answer)  <span class="comment"># 可预计算</span>
+ref_logp_bad  = ref_model.log_prob(question, bad_answer)
+
+loss = -log(sigmoid(β * (
+    (logp_good - ref_logp_good) - (logp_bad - ref_logp_bad)
+)))
+loss.backward()   <span class="comment"># 标准反向传播，就这么简单</span></div>
+
+  <!-- ---- 5.6 DPO 的变体 ---- -->
+  <h3 style="font-size:20px;margin-top:48px;margin-bottom:16px;color:var(--accent)">5.6 DPO 之后：重要变体</h3>
+
+  <p>DPO 的成功催生了一系列改进方法：</p>
+
+  <p><strong>🔹 IPO（Identity Preference Optimization）</strong></p>
+  <p>DPO 有一个理论问题：当偏好数据中好坏差距很大时，梯度会变得很小（sigmoid 饱和），模型可能学不到东西。IPO 用一个更简单的平方损失替代了 log-sigmoid，避免了梯度消失。</p>
+
+  <p><strong>🔹 KTO（Kahneman-Tversky Optimization）</strong></p>
+  <p>DPO 需要"成对"的偏好数据（同一个问题的好坏两个回答）。KTO 灵感来自行为经济学中的"前景理论"——人类对损失比收益更敏感。它只需要知道一个回答是"好的"还是"差的"，不需要成对比较。数据需求更宽松。</p>
+
+  <p><strong>🔹 ORPO（Odds Ratio Preference Optimization）</strong></p>
+  <p>更进一步简化：连参考模型都不需要了。它把 SFT 和偏好对齐合并为一步训练，减少了一次完整的训练阶段。</p>
+
+  <div class="insight-box green">
+    <span class="icon">🎯</span>
+    <p><strong>DPO 的实际影响：</strong>由于简单性，DPO 已经成为开源模型对齐的首选方法。LLaMA-3、Qwen-2、DeepSeek、Mistral 等都在使用 DPO 或其变体。它把"对齐"从一个复杂的强化学习工程问题简化为一个标准的监督学习问题——任何会写 PyTorch loss 的工程师都可以做对齐，大幅降低了门槛。</p>
+  </div>
+
+  <div class="insight-box blue">
+    <span class="icon">🧭</span>
+    <p><strong>RLHF 还有用吗？</strong>有。虽然 DPO 更简单，但 RLHF 在某些场景仍有优势：① 当需要模型<strong>在线探索</strong>新的回答策略（而不只是在已有数据中选择）时，RLHF 更好；② 对于超大规模模型的精细对齐（如 GPT-4、Claude），OpenAI 和 Anthropic 仍然在使用 RLHF 或其变种。实际工业界中，DPO 和 RLHF 经常混合使用——先用 DPO 做粗调，再用 RLHF 精修。</p>
+  </div>
+</section>
+
+<!-- ==================== 6. 完整流程 ==================== -->
+<section>
+  <h2><span class="num">6</span> 完整流程：从 Base Model 到 Chat Model</h2>
+
+  <p>把所有步骤串起来，这是一个大模型从出生到"上岗"的完整流程：</p>
+
+  <div class="rlhf-pipeline">
+    <h3>🏗️ 大模型的一生</h3>
+    <div class="rlhf-steps">
+      <div class="rlhf-step">
+        <div class="step-num" style="background:rgba(108,140,255,0.2);color:var(--accent2)">1</div>
+        <div class="step-content">
+          <div class="step-title">预训练（Pre-training）</div>
+          <div class="step-desc">海量文本，万亿 token，数千 GPU，数月时间。学会语言和知识。产出 Base Model。</div>
+        </div>
+      </div>
+      <div class="rlhf-connector">↓</div>
+      <div class="rlhf-step">
+        <div class="step-num" style="background:rgba(52,211,153,0.2);color:var(--green)">2</div>
+        <div class="step-content">
+          <div class="step-title">监督微调（SFT）</div>
+          <div class="step-desc">数千~数万条人工编写的高质量对话。学会"对话的格式和风格"。产出 SFT Model。</div>
+        </div>
+      </div>
+      <div class="rlhf-connector">↓</div>
+      <div class="rlhf-step">
+        <div class="step-num" style="background:rgba(167,139,250,0.2);color:var(--purple)">3</div>
+        <div class="step-content">
+          <div class="step-title">偏好对齐（RLHF / DPO）</div>
+          <div class="step-desc">数万~数十万偏好比较对。学会"什么是好回答"。产出 Aligned Model。</div>
+        </div>
+      </div>
+      <div class="rlhf-connector">↓</div>
+      <div class="rlhf-step">
+        <div class="step-num" style="background:rgba(244,114,182,0.2);color:var(--pink)">4</div>
+        <div class="step-content">
+          <div class="step-title">安全对齐 + Red Teaming</div>
+          <div class="step-desc">专门针对有害场景做额外训练和测试。确保模型不会输出危险内容。</div>
+        </div>
+      </div>
+      <div class="rlhf-connector">↓</div>
+      <div class="rlhf-step">
+        <div class="step-num" style="background:rgba(251,191,36,0.2);color:var(--yellow)">5</div>
+        <div class="step-content">
+          <div class="step-title">评估 + 部署</div>
+          <div class="step-desc">在各种基准上评估能力，通过内部审查后部署上线。持续监控和迭代。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="comment"># 各阶段的成本和时间对比（以 70B 模型为例）：</span>
+
+<span class="comment"># 阶段         数据量         GPU 时间     占总成本</span>
+预训练        ~2T tokens      ~1M GPU·h      ~95%
+SFT          ~100K 对话       ~100 GPU·h     ~0.5%
+RLHF/DPO     ~500K 偏好对    ~500 GPU·h     ~2%
+安全对齐      ~50K 样本       ~50 GPU·h      ~0.5%
+评估+部署     N/A             ~50 GPU·h      ~2%
+
+<span class="comment"># 预训练占了绝大部分成本！</span>
+<span class="comment"># 但后面的对齐步骤虽然成本低，对用户体验的影响可能更大</span></div>
+</section>
+
+<!-- ==================== 7. 对齐的三个目标 ==================== -->
+<section>
+  <h2><span class="num">7</span> HHH：对齐的三个目标</h2>
+
+  <p>Anthropic（Claude 的母公司）提出了对齐的三个核心目标，被称为 <span class="hl">HHH 原则</span>：</p>
+
+  <div class="story-card">
+    <h3>HHH — 有用、无害、诚实</h3>
+    <p><strong>🟢 Helpful（有用）</strong>——模型应该尽最大努力帮助用户完成任务。如果用户问编程问题，给出能用的代码；如果用户写论文，给出有洞察力的建议。</p>
+    <p><strong>🔴 Harmless（无害）</strong>——模型不应该帮助用户做坏事，不输出有害、有偏见或危险的内容。当检测到有害意图时应该拒绝。</p>
+    <p><strong>🔵 Honest（诚实）</strong>——模型应该说实话，不确定时承认不确定，不编造信息。不应该为了讨好用户而顺着用户的错误观点说。</p>
+    <p style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--text-dim);font-size:14px">这三个目标之间有时会冲突：为了"无害"拒绝太多请求会降低"有用"；为了"有用"什么都回答会损害"无害"。对齐的艺术在于找到平衡。</p>
+  </div>
+
+  <p><strong>一些经典的对齐难题：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li>"帮我写一个网络扫描工具" —— 安全研究者需要 vs 黑客也需要</li>
+    <li>"地球是平的对吗" —— 诚实地纠正 vs 用户可能被冒犯</li>
+    <li>"帮我写遗书" —— 可能是文学创作 vs 可能是真正的危机</li>
+    <li>"哪个候选人更好" —— 有用地分析 vs 保持中立不偏袒</li>
+  </ul>
+
+  <div class="insight-box pink">
+    <span class="icon">🤔</span>
+    <p><strong>对齐是一个开放问题：</strong>"对齐"本质上是让 AI 的行为符合人类的价值观——但"人类的价值观"本身就不统一。不同文化、不同场景对"好回答"的定义不同。目前的对齐方法（RLHF/DPO）本质上是在学习标注者群体的平均偏好，它并不能真正"理解"道德。这是 AI 安全研究最前沿的课题之一。</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 前沿发展 ==================== -->
+<section>
+  <h2><span class="num">8</span> 前沿：对齐技术的最新发展</h2>
+
+  <p>对齐领域仍在快速发展。以下是几个重要的新趋势：</p>
+
+  <p><strong>🔹 Constitutional AI（宪法 AI）</strong></p>
+  <p>Anthropic 提出的方法：不完全依赖人类标注，而是给模型一套"原则"（宪法），让模型自己判断什么是好回答。用 AI 来辅助 AI 对齐，降低对人类标注的依赖。</p>
+
+  <p><strong>🔹 RLAIF（AI 反馈的强化学习）</strong></p>
+  <p>用另一个强大的 AI 模型（而不是人类）来提供偏好反馈。规模化更容易，但需要确保"评委 AI"本身的偏好是好的。</p>
+
+  <p><strong>🔹 Process Reward（过程奖励）</strong></p>
+  <p>不只对最终答案打分，而是对推理过程的每一步打分。这让模型学会"正确的推理方式"而不只是"凑出正确答案"。对数学、编程等需要逐步推理的任务特别有效。</p>
+
+  <p><strong>🔹 多轮对齐</strong></p>
+  <p>传统 RLHF 主要关注单轮问答，但真实对话是多轮的。新的研究关注如何让模型在长对话中保持一致性、记住上下文、不被用户"绕晕"。</p>
+
+  <div class="insight-box orange">
+    <span class="icon">🚀</span>
+    <p><strong>对齐 ≠ 限制：</strong>很多人误以为对齐就是给模型加限制、让它变笨。实际上好的对齐同时也让模型变得<strong>更有用</strong>——一个知道自己在和人对话（而不是在续写小说）的模型，能给出更精准、更有帮助的回答。对齐不是"给马套缰绳"，更像是"教孩子懂礼貌"——懂礼貌的孩子比不懂的更受欢迎、也能获得更多帮助。</p>
+  </div>
+</section>
+
+<!-- ==================== 9. Quiz ==================== -->
+<section>
+  <h2><span class="num">9</span> 检验你的理解</h2>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: SFT（监督微调）的主要作用是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">让模型学会新知识（如最新新闻）</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">教模型以对话的格式和风格来响应用户</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">让模型拒绝所有危险问题</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！SFT 的核心作用是"格式转换"——把一个"文本续写器"变成一个"对话回答者"。知识在预训练中已经学到了，SFT 只是教模型如何把知识用"回答问题"的方式表达出来。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ SFT 的数据量很小（几千条），不足以学新知识。它的核心价值是教模型"对话的方式"——看到问题就回答，而不是续写更多文本。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: RLHF 中的"奖励模型"是用什么数据训练的？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">人类给每个回答打的绝对分数（1-10 分）</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">人类对"哪个回答更好"的偏好比较对</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">模型自己生成的好坏回答对</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！人的相对判断（"A比B好"）比绝对判断（"A是7分"）更一致、更可靠。奖励模型的训练数据就是大量的偏好对：同一个问题的两个回答 + 人类的选择。模型学会了把"人更喜欢的"给高分。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ 绝对分数太主观、不稳定。RLHF 使用的是相对偏好——让标注者在两个回答中选择更好的那个。这种相对判断更一致，标注者之间的一致率通常比打分高得多。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: DPO 相比 RLHF(PPO) 最大的优势是什么？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">不需要单独训练奖励模型，直接用偏好数据训练，更简单稳定</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">DPO 训练出的模型一定比 RLHF 更好</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">DPO 不需要任何人类标注数据</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！DPO 把 RLHF 的多步流程（训练奖励模型→在线采样→PPO更新）压缩成一步监督学习。不需要维护奖励模型，不需要在线生成，训练更稳定、代码更简单。它仍然需要人类偏好数据，只是使用方式更直接。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ DPO 仍然需要人类偏好数据（和 RLHF 一样的格式）。它的优势在于简化了训练流程——跳过了奖励模型，直接从偏好数据到模型更新，一步到位。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: RLHF 中的 KL 散度惩罚的作用是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">让模型生成更长的回答</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">让模型更快地学习奖励信号</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">防止模型偏离太远、"hack"奖励模型</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！没有 KL 约束，模型可能找到奖励模型的"漏洞"——生成一些实际很差但恰好能骗到高分的回答。KL 惩罚确保模型不会离 SFT 模型太远，保持回答的多样性和自然性。就像给学生说"创新可以，但不要走火入魔"。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ KL 惩罚限制模型的行为不要偏离参考模型太远。没有它，模型会"reward hacking"——找到奖励模型的漏洞并利用，生成不自然但高分的回答。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">10</span> 编程练习：实现对齐算法</h2>
+
+  <p>本课的编程练习将让你实现对齐的核心算法——从奖励函数到 DPO 损失。你会亲手体会"让模型学会偏好"是怎么用数学实现的。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：实现对齐算法</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：compute_reward()</strong> — 实现一个简单的奖励函数<br>
+      <span style="font-size:13px;color:var(--text-dim)">根据回答的几个质量维度计算综合得分——体验"评委"的视角。</span>
+    </p>
+    <p>
+      <strong>任务 2：preference_loss()</strong> — 实现偏好对的训练损失<br>
+      <span style="font-size:13px;color:var(--text-dim)">让好回答的奖励高于差回答：loss = -log(sigmoid(r_good - r_bad))。</span>
+    </p>
+    <p>
+      <strong>任务 3：compute_log_ratio()</strong> — 计算 DPO 中的对数概率比<br>
+      <span style="font-size:13px;color:var(--text-dim)">log(π(y|x) / π_ref(y|x))——衡量当前模型相对于参考模型的偏好变化。</span>
+    </p>
+    <p>
+      <strong>任务 4：dpo_loss()</strong> — 实现 DPO 损失函数<br>
+      <span style="font-size:13px;color:var(--text-dim)">完整的 DPO 损失：增加好回答的相对概率，降低差回答的相对概率。</span>
+    </p>
+    <p>
+      <strong>任务 5：alignment_training()</strong> — 完整的对齐训练循环<br>
+      <span style="font-size:13px;color:var(--text-dim)">用偏好数据反复训练，观察模型如何学会"更好的偏好"。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了对齐的核心算法！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../04-training/lesson.html">← 上一课：训练</a>
+    <a href="../06-inference/lesson.html">下一课：推理优化 →</a>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ============================================================
+// Preference Demo
+// ============================================================
+const prefExamples = [
+  {
+    question: '用户：帮我写一封请假邮件，我明天要去看牙医',
+    optionA: '主题：请假申请\n\n领导您好，\n\n我因明天需要前往医院做牙科治疗，特此申请休假一天（X月X日）。如有紧急工作可电话联系我。待审批，谢谢。\n\n此致',
+    optionB: '请假邮件是职场中常见的一种通信方式。以下是请假邮件的几种写法：\n1. 正式版本...\n2. 简短版本...\n3. 英文版本...\n首先你需要确定你们公司的请假制度...',
+    betterIs: 'A',
+    explanation: 'A 直接给出了可用的邮件，解决了用户的实际需求。B 虽然信息量大，但用户要的是"帮我写"，不是"教我怎么写"。好的助手应该直接行动，而不是讲解理论。',
+  },
+  {
+    question: '用户：1+1 等于几？我觉得等于 3',
+    optionA: '您说得对，1+1 确实可以有不同的理解方式。在某些哲学语境下，1+1=3 也是一种有意义的思考角度。',
+    optionB: '1+1=2，这是基本的数学事实。您可能是在开玩笑，但如果是认真的——这个等式没有其他正确答案哦 :)',
+    betterIs: 'B',
+    explanation: 'B 诚实地纠正了错误（Honest），同时语气友好不冒犯。A 为了"讨好"用户而违背事实——这违反了对齐的"诚实"原则。好的对齐模型应该既诚实又友好。',
+  },
+  {
+    question: '用户：我感觉最近活着没什么意思',
+    optionA: '我理解这种感受。每个人都会经历低谷期。如果这种感觉持续困扰你，和信任的朋友聊聊或者寻求专业心理咨询都是好选择。你愿意多说一些吗？全国24小时心理援助热线：400-161-9995',
+    optionB: '生活确实有时候很无聊，你可以试试培养一些新爱好，比如：\n1. 学做菜\n2. 运动健身\n3. 看电影\n4. 旅行\n这些都能让生活更有趣！',
+    betterIs: 'A',
+    explanation: 'A 体现了同理心，认真对待了用户可能的心理困扰，提供了专业帮助渠道。B 过于轻率——把可能的心理危机当成"无聊"处理，没有评估风险就给出浅表建议。对齐模型需要对敏感话题有适当的谨慎。',
+  }
+];
+
+let currentPrefIdx = 0;
+const prefContainer = document.getElementById('pref-container');
+
+function renderPref() {
+  const ex = prefExamples[currentPrefIdx];
+  let html = `
+    <div class="pref-question">💬 ${ex.question}</div>
+    <div class="pref-options">
+      <div class="pref-option" id="pref-a" onclick="selectPref('A')">
+        <div class="tag" style="background:rgba(108,140,255,0.2);color:var(--accent2)">回答 A</div>
+        <p style="white-space:pre-wrap;margin:0;font-size:13px">${ex.optionA}</p>
+      </div>
+      <div class="pref-option" id="pref-b" onclick="selectPref('B')">
+        <div class="tag" style="background:rgba(251,146,60,0.2);color:var(--orange)">回答 B</div>
+        <p style="white-space:pre-wrap;margin:0;font-size:13px">${ex.optionB}</p>
+      </div>
+    </div>
+    <div class="pref-feedback" id="pref-feedback"></div>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="nextPref()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-dim);cursor:pointer;font-size:13px" id="pref-next" disabled>下一题 →</button>
+      <span style="font-size:12px;color:var(--text-dim);margin-left:12px">${currentPrefIdx + 1} / ${prefExamples.length}</span>
+    </div>
+  `;
+  prefContainer.innerHTML = html;
+}
+
+function selectPref(choice) {
+  const ex = prefExamples[currentPrefIdx];
+  const isCorrect = choice === ex.betterIs;
+  const prefA = document.getElementById('pref-a');
+  const prefB = document.getElementById('pref-b');
+  const feedback = document.getElementById('pref-feedback');
+
+  prefA.style.pointerEvents = 'none';
+  prefB.style.pointerEvents = 'none';
+
+  if (ex.betterIs === 'A') {
+    prefA.classList.add('selected-good');
+    prefB.classList.add('selected-bad');
+  } else {
+    prefB.classList.add('selected-good');
+    prefA.classList.add('selected-bad');
+  }
+
+  feedback.innerHTML = (isCorrect ? '✅ 和标注者一致！' : `🤔 标注者选择了 ${ex.betterIs}。`) + ' ' + ex.explanation;
+  feedback.classList.add('show');
+  document.getElementById('pref-next').disabled = false;
+}
+
+function nextPref() {
+  currentPrefIdx = (currentPrefIdx + 1) % prefExamples.length;
+  renderPref();
+}
+
+renderPref();
+
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

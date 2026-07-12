@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第六课：推理优化 — 让模型跑得更快</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #fb923c;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(251,146,60,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(251,146,60,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+  .hl-cyan { color: var(--cyan); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '⚡'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.green { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.2); }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box.cyan { background: rgba(34,211,238,0.08); border-color: rgba(34,211,238,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 110px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(251,146,60,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- KV Cache visual ---- */
+  .kv-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .kv-demo h3 { font-size: 18px; margin-bottom: 16px; }
+  .kv-timeline { display: flex; flex-direction: column; gap: 8px; }
+  .kv-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-radius: 8px; background: var(--bg);
+    font-size: 13px; transition: all 0.3s;
+  }
+  .kv-step:hover { background: rgba(251,146,60,0.05); }
+  .kv-step .step-label { width: 60px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
+  .kv-tokens { display: flex; gap: 4px; flex-wrap: wrap; }
+  .kv-token {
+    padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  }
+  .kv-token.cached { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .kv-token.new { background: rgba(251,146,60,0.15); color: var(--orange); border: 1px solid rgba(251,146,60,0.3); }
+  .kv-token.output { background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+  .kv-saving { font-size: 12px; color: var(--text-dim); margin-left: auto; }
+
+  /* ---- Quantization visual ---- */
+  .quant-bars {
+    display: grid; grid-template-columns: 1fr; gap: 8px; margin: 16px 0;
+  }
+  .quant-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px; background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .quant-bar .bar-label { width: 80px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .quant-bar .bar-track { flex: 1; height: 20px; background: var(--surface2); border-radius: 6px; overflow: hidden; position: relative; }
+  .quant-bar .bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+  .quant-bar .bar-info { width: 120px; font-size: 12px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+
+  /* ---- Comparison table ---- */
+  .compare-table {
+    width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;
+  }
+  .compare-table th, .compare-table td {
+    padding: 12px 16px; border: 1px solid var(--border); text-align: center;
+  }
+  .compare-table th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  .compare-table td { background: var(--surface2); }
+  .compare-table tr:hover td { background: rgba(251,146,60,0.05); }
+
+  /* ---- Speed demo ---- */
+  .speed-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .speed-demo h3 { font-size: 18px; margin-bottom: 16px; }
+  .speed-bars { display: flex; flex-direction: column; gap: 12px; }
+  .speed-item { display: flex; align-items: center; gap: 12px; }
+  .speed-item .speed-label { width: 140px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .speed-item .speed-track { flex: 1; height: 28px; background: var(--bg); border-radius: 8px; overflow: hidden; position: relative; }
+  .speed-item .speed-fill { height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 10px; font-size: 11px; font-weight: 700; color: #000; }
+  .speed-item .speed-val { width: 80px; font-size: 12px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(251,146,60,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    .compare-table { font-size: 12px; }
+    .compare-table th, .compare-table td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第六课 · 推理部署</div>
+  <h1>推理优化<br><span>让模型跑得更快</span></h1>
+  <p>前五课我们学完了大模型的"制造"全过程。但造出模型只是开始——当千万用户同时发请求时，怎么让模型快速、低成本地响应每个人？这节课揭开大模型"高速运转"背后的工程魔法。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 回顾 ==================== -->
+<section>
+  <h2><span class="num">0</span> 为什么推理优化重要？</h2>
+
+  <p>训练是一次性的投入，但推理是持续不断的成本。当 ChatGPT 每天处理数亿次请求时，推理成本远超训练。一个未优化的 175B 参数模型，生成一个 token 就需要数百毫秒——用户等不起。</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🧠</div>
+      <div class="label" style="opacity:0.4">模型训练</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🎭</div>
+      <div class="label" style="opacity:0.4">RLHF 对齐</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(251,146,60,0.3)">⚡</div>
+      <div class="label" style="color:var(--accent)">推理优化</div>
+      <div class="sublabel">本课重点 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.5">👥</div>
+      <div class="label" style="opacity:0.5">服务用户</div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="comment"># 推理的两大核心指标：</span>
+
+<span class="keyword">延迟（Latency）</span>：生成一个 token 需要多少毫秒？
+  → 决定用户体验（等待 vs 流畅对话）
+
+<span class="keyword">吞吐量（Throughput）</span>：每秒能生成多少 token？
+  → 决定服务多少用户的能力和成本
+
+<span class="comment"># 两者往往需要权衡：</span>
+<span class="comment"># 大 batch → 吞吐量高但单个请求延迟增大</span>
+<span class="comment"># 小 batch → 延迟低但 GPU 利用率不高</span></div>
+</section>
+
+<!-- ==================== 1. 自回归生成的瓶颈 ==================== -->
+<section>
+  <h2><span class="num">1</span> 自回归生成的天然瓶颈</h2>
+
+  <p>回忆第三课：大模型生成文本是<span class="hl">逐 token 生成</span>的——每次只生成一个 token，然后把它加入输入序列，再预测下一个。这意味着生成 100 个 token 需要跑 100 次前向传播。</p>
+
+  <div class="code-block"><span class="comment"># 自回归生成的流程：</span>
+
+输入: <span class="string">"今天天气"</span>
+Step 1: 模型处理 ["今","天","天","气"] → 预测 "真" → <span class="number">~30ms</span>
+Step 2: 模型处理 ["今","天","天","气","真"] → 预测 "好" → <span class="number">~30ms</span>
+Step 3: 模型处理 ["今","天","天","气","真","好"] → 预测 "，" → <span class="number">~30ms</span>
+...
+
+<span class="comment"># 生成 200 个 token ≈ 200 × 30ms = 6 秒</span>
+<span class="comment"># 用户要等 6 秒才能看到完整回答——不可接受！</span>
+
+<span class="comment"># 而且注意：每一步都要重新处理所有之前的 token</span>
+<span class="comment"># Step 3 又在重复计算 "今天天气真" 这些已经算过的东西</span>
+<span class="comment"># 这就是巨大的浪费！→ KV Cache 来解决</span></div>
+
+  <p>大模型推理还有一个独特的特点：<span class="hl-purple">内存瓶颈（Memory-Bound）</span>而非计算瓶颈。</p>
+
+  <div class="insight-box blue">
+    <span class="icon">💾</span>
+    <p><strong>为什么是内存瓶颈？</strong>生成每个 token 时，模型只做一次矩阵-向量乘法（不是矩阵-矩阵）。对于 175B 参数的模型，每次前向需要从显存读取 350GB 的参数，但只做很少量的计算。GPU 的显存带宽（~2TB/s）成了瓶颈，而不是算力（~300 TFLOPS）。这就像你有一台超快的 CPU，但硬盘读取速度跟不上——计算单元大部分时间在"等数据"。</p>
+  </div>
+</section>
+
+<!-- ==================== 2. KV Cache ==================== -->
+<section>
+  <h2><span class="num">2</span> KV Cache：不做重复计算</h2>
+
+  <p><span class="hl">KV Cache</span> 是大模型推理中最基本也最重要的优化。核心思想：<span class="hl-green">把已经算过的 Key 和 Value 缓存起来，下次直接复用</span>。</p>
+
+  <p>回忆 Self-Attention 的计算：每个 token 需要和所有之前的 token 计算注意力。如果不缓存，每生成一个新 token，都要重新计算前面所有 token 的 K 和 V——这是巨大的浪费。</p>
+
+  <div class="kv-demo">
+    <h3>📦 KV Cache 工作原理</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">缓存的 K/V（绿色）不需要重新计算，每步只需计算新 token（橙色）的 K/V：</p>
+    <div class="kv-timeline">
+      <div class="kv-step">
+        <div class="step-label">Step 1</div>
+        <div class="kv-tokens">
+          <span class="kv-token new">今</span>
+          <span class="kv-token new">天</span>
+          <span class="kv-token new">天</span>
+          <span class="kv-token new">气</span>
+          <span class="kv-token output">→ 真</span>
+        </div>
+        <div class="kv-saving">计算全部 4 个 K/V</div>
+      </div>
+      <div class="kv-step">
+        <div class="step-label">Step 2</div>
+        <div class="kv-tokens">
+          <span class="kv-token cached">今</span>
+          <span class="kv-token cached">天</span>
+          <span class="kv-token cached">天</span>
+          <span class="kv-token cached">气</span>
+          <span class="kv-token new">真</span>
+          <span class="kv-token output">→ 好</span>
+        </div>
+        <div class="kv-saving">只算 1 个新 K/V ✓</div>
+      </div>
+      <div class="kv-step">
+        <div class="step-label">Step 3</div>
+        <div class="kv-tokens">
+          <span class="kv-token cached">今</span>
+          <span class="kv-token cached">天</span>
+          <span class="kv-token cached">天</span>
+          <span class="kv-token cached">气</span>
+          <span class="kv-token cached">真</span>
+          <span class="kv-token new">好</span>
+          <span class="kv-token output">→ ，</span>
+        </div>
+        <div class="kv-saving">只算 1 个新 K/V ✓</div>
+      </div>
+      <div class="kv-step">
+        <div class="step-label">Step N</div>
+        <div class="kv-tokens">
+          <span class="kv-token cached">...</span>
+          <span class="kv-token cached">N-1 个缓存</span>
+          <span class="kv-token new">新</span>
+          <span class="kv-token output">→ ?</span>
+        </div>
+        <div class="kv-saving">始终只算 1 个 ✓</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="comment"># 没有 KV Cache：每步计算量 ∝ 序列长度（越来越慢）</span>
+Step 1: 处理 4 个 token
+Step 2: 处理 5 个 token  <span class="comment"># 包括重新算前 4 个的 K/V</span>
+Step 3: 处理 6 个 token  <span class="comment"># 包括重新算前 5 个的 K/V</span>
+...
+Step N: 处理 N+3 个 token
+
+<span class="comment"># 有 KV Cache：每步只处理 1 个新 token（恒定速度）</span>
+Step 1: 处理 4 个 token → 缓存 4 组 K/V
+Step 2: 处理 <span class="number">1</span> 个新 token → 缓存追加 1 组 K/V
+Step 3: 处理 <span class="number">1</span> 个新 token → 缓存追加 1 组 K/V
+...
+Step N: 处理 <span class="number">1</span> 个新 token → 注意力计算用缓存中的所有 K/V
+
+<span class="comment"># 加速比：对于生成 1000 个 token，节省约 500× 计算量</span></div>
+
+  <p><strong>KV Cache 的代价：</strong>需要额外显存来存储缓存。对于 LLaMA-70B，每个 token 的 KV Cache 占约 1.6MB。处理一个 4096 长度的序列就需要 ~6.5GB。当同时服务多个用户时，KV Cache 的显存消耗可能比模型参数本身还大！</p>
+
+  <div class="insight-box">
+    <span class="icon">⚡</span>
+    <p><strong>Prefill vs Decode 两阶段：</strong>推理分为两个阶段。<strong>Prefill（预填充）</strong>：处理用户的输入（prompt），一次性计算所有输入 token 的 K/V，这一步是计算密集型（Compute-Bound），可以高效并行。<strong>Decode（解码）</strong>：逐个生成输出 token，每步只处理一个 token，是内存密集型（Memory-Bound）。这两个阶段的特性完全不同，很多优化针对其中一个。</p>
+  </div>
+</section>
+
+<!-- ==================== 3. 量化 ==================== -->
+<section>
+  <h2><span class="num">3</span> 量化：用更少的位数表示参数</h2>
+
+  <p><span class="hl">量化（Quantization）</span>是另一个关键优化：把模型参数从高精度（FP16，16位）压缩为低精度（INT8 或 INT4，8位或4位）。参数占用的空间减半甚至减至四分之一——意味着显存需求大幅降低，读取速度更快，推理更快。</p>
+
+  <div class="speed-demo">
+    <h3>📊 不同精度的显存对比（70B 参数模型）</h3>
+    <div class="speed-bars">
+      <div class="speed-item">
+        <div class="speed-label">FP32（全精度）</div>
+        <div class="speed-track"><div class="speed-fill" style="width:100%;background:var(--red)">280 GB</div></div>
+        <div class="speed-val">280 GB</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">FP16（半精度）</div>
+        <div class="speed-track"><div class="speed-fill" style="width:50%;background:var(--orange)">140 GB</div></div>
+        <div class="speed-val">140 GB</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">INT8（8位整数）</div>
+        <div class="speed-track"><div class="speed-fill" style="width:25%;background:var(--yellow)">70 GB</div></div>
+        <div class="speed-val">70 GB</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">INT4（4位整数）</div>
+        <div class="speed-track"><div class="speed-fill" style="width:12.5%;background:var(--green)">35 GB</div></div>
+        <div class="speed-val">35 GB</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--text-dim);margin-top:12px">INT4 量化让 70B 模型能跑在单张 40GB 的 A100 上（原本需要 3-4 张）！</p>
+  </div>
+
+  <div class="code-block"><span class="comment"># 量化的基本原理：</span>
+
+<span class="comment"># FP16 的值域范围很大：约 -65504 到 +65504</span>
+<span class="comment"># 但模型的参数通常集中在一个小范围内（如 -1.0 到 +1.0）</span>
+
+<span class="comment"># INT8 量化：把 [-1.0, 1.0] 映射到 [-128, 127]</span>
+scale = (max_val - min_val) / <span class="number">255</span>
+quantized = round((float_val - min_val) / scale)
+
+<span class="comment"># 例：float_val = 0.35, 范围 [-1, 1]</span>
+scale = <span class="number">2.0</span> / <span class="number">255</span> = <span class="number">0.00784</span>
+quantized = round((<span class="number">0.35</span> - (-<span class="number">1.0</span>)) / <span class="number">0.00784</span>) = round(<span class="number">172.2</span>) = <span class="number">172</span>
+
+<span class="comment"># 还原：</span>
+dequantized = <span class="number">172</span> × <span class="number">0.00784</span> + (-<span class="number">1.0</span>) = <span class="number">0.3485</span>  <span class="comment"># 有微小误差</span>
+
+<span class="comment"># 关键洞见：这点误差对模型输出的影响微乎其微</span>
+<span class="comment"># 神经网络对参数的微小扰动天然鲁棒</span></div>
+
+  <p><strong>量化方法的演进：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl2">PTQ（Post-Training Quantization）</span>：训练后直接量化，不需要额外训练。简单快速。</li>
+    <li><span class="hl2">GPTQ</span>：更精细的逐层量化，通过最小化量化误差来选择最优的量化参数。</li>
+    <li><span class="hl2">AWQ（Activation-Aware）</span>：不平等对待所有参数——对激活值影响大的参数保留更高精度。</li>
+    <li><span class="hl2">GGUF（llama.cpp）</span>：针对 CPU 推理优化的混合精度格式，让大模型能在普通电脑上运行。</li>
+  </ul>
+
+  <div class="insight-box green">
+    <span class="icon">🎯</span>
+    <p><strong>量化的惊人发现：</strong>研究表明，4-bit 量化后的模型在大多数任务上几乎无损——性能下降通常不超过 1-2%。这意味着你可以用四分之一的资源获得几乎同等的效果。这也是为什么像 llama.cpp 这样的项目能让 7B 模型在 MacBook 上流畅运行——INT4 量化后只需要约 4GB 内存。</p>
+  </div>
+</section>
+
+<!-- ==================== 4. 投机采样 ==================== -->
+<section>
+  <h2><span class="num">4</span> 投机采样：用小模型加速大模型</h2>
+
+  <p><span class="hl">投机采样（Speculative Decoding）</span>是一个巧妙的加速技巧：用一个<strong>小而快</strong>的模型来"猜测"大模型可能生成什么，然后让大模型一次性验证。如果猜对了——跳过很多步；猜错了——回退到猜错的位置。</p>
+
+  <div class="code-block"><span class="comment"># 投机采样的流程：</span>
+
+<span class="comment"># 假设有一个 7B 小模型（快 10×）和一个 70B 大模型（慢但准确）</span>
+
+<span class="comment"># 1. 小模型快速生成 K 个 token（如 K=5）：</span>
+draft = small_model.generate(<span class="number">5</span> tokens)
+<span class="comment">#  → ["今", "天", "天", "气", "真"]</span>
+
+<span class="comment"># 2. 大模型一次性验证这 5 个 token（并行！）：</span>
+verified = large_model.verify(draft)
+<span class="comment"># 对于每个位置，检查大模型是否同意小模型的选择</span>
+<span class="comment"># 假设前 4 个都对，第 5 个大模型想生成"不"而非"真"：</span>
+<span class="comment">#  → 接受 ["今", "天", "天", "气"]，拒绝 "真"，替换为 "不"</span>
+
+<span class="comment"># 3. 本轮结果：一次大模型前向传播生成了 5 个 token！</span>
+<span class="comment"># 而不是通常的 1 个——加速了 ~5×</span>
+
+<span class="comment"># 关键性质：输出和直接用大模型生成完全一致</span>
+<span class="comment"># 这不是近似！是数学上等价的精确加速</span></div>
+
+  <div class="insight-box purple">
+    <span class="icon">🎲</span>
+    <p><strong>为什么这能保证结果一致？</strong>投机采样用了一个精妙的概率论技巧（rejection sampling）：对于小模型和大模型一致的 token，直接接受；对于不一致的，按照两者概率的差值做采样。最终的 token 序列的概率分布和纯粹用大模型生成的完全一样。这就像让助手先写草稿，老板快速审阅——如果草稿好就直接用，不好就老板改，最终产出的质量和老板亲自写一样。</p>
+  </div>
+
+  <p>投机采样的加速倍数取决于小模型和大模型的"一致率"。对于同系列的模型（如 LLaMA-7B + LLaMA-70B），一致率通常在 70-85%，实际加速约 2-3×。</p>
+</section>
+
+<!-- ==================== 5. 批处理与调度 ==================== -->
+<section>
+  <h2><span class="num">5</span> 批处理与调度：同时服务更多人</h2>
+
+  <p>在生产环境中，服务器需要同时处理成百上千个用户的请求。如何高效地把这些请求"打包"在一起处理，是吞吐量优化的关键。</p>
+
+  <p><strong>🔹 Continuous Batching（连续批处理）</strong></p>
+  <p>传统的 batching 会等一批请求全部完成再处理下一批——短请求要等长请求。Continuous Batching 允许已完成的请求立即退出、新请求立即加入，就像餐厅翻台——吃完的立即离开，不用等全桌人都吃完。</p>
+
+  <div class="code-block"><span class="comment"># 传统 Static Batching：</span>
+Batch 1: [请求A(10 token), 请求B(100 token), 请求C(50 token)]
+<span class="comment"># 请求A 生成 10 个 token 就结束了，但要等 B 生成完 100 个才能开始 Batch 2</span>
+<span class="comment"># A 和 C 的位置在后面 90/50 步中被浪费了</span>
+
+<span class="comment"># Continuous Batching：</span>
+Step 1-10:  [A, B, C]    <span class="comment"># 三个都在生成</span>
+Step 11:    [D, B, C]    <span class="comment"># A 完成，新请求 D 立即加入！</span>
+Step 12-50: [D, B, E]    <span class="comment"># C 完成，E 加入</span>
+...
+<span class="comment"># GPU 始终满负荷运转，不浪费任何位置</span></div>
+
+  <p><strong>🔹 PagedAttention（vLLM）</strong></p>
+  <p>KV Cache 的显存管理是一个难题：不同请求的序列长度不同，传统方法需要预分配最大长度的显存——浪费巨大。vLLM 的 PagedAttention 借鉴了操作系统的虚拟内存管理：把 KV Cache 分成固定大小的"页"，按需分配，避免碎片化。</p>
+
+  <div class="code-block"><span class="comment"># PagedAttention 的类比：</span>
+<span class="comment"># 传统方式 = 预订固定长度的停车位</span>
+<span class="comment"># 不管你车多大，都给你 2048 格长的停车位 → 大量空间浪费</span>
+
+<span class="comment"># PagedAttention = 立体停车场按需分配</span>
+<span class="comment"># 小车停 2 格，大车停 5 格，灵活分配 → 利用率大幅提高</span>
+
+<span class="comment"># 实测效果：vLLM 相比 HuggingFace 原生推理</span>
+<span class="comment"># 吞吐量提升 2-4×，显存浪费减少 60-80%</span></div>
+
+  <div class="insight-box cyan">
+    <span class="icon">🏗️</span>
+    <p><strong>推理框架生态：</strong>目前主流的推理框架包括 vLLM（PagedAttention + Continuous Batching）、TensorRT-LLM（NVIDIA 官方优化）、SGLang（编译优化）、llama.cpp（CPU/Metal推理）。它们各有侧重，但核心都在解决同一个问题：如何在有限的 GPU 资源上最大化推理效率。</p>
+  </div>
+</section>
+
+<!-- ==================== 6. 采样策略 ==================== -->
+<section>
+  <h2><span class="num">6</span> 采样策略：控制生成的多样性</h2>
+
+  <p>模型输出的是一个概率分布——但怎么从分布中选择最终的 token？不同的选择策略会产生截然不同的文本风格：</p>
+
+  <div class="code-block"><span class="comment"># 假设模型对下一个 token 的概率分布（Top-5）：</span>
+<span class="comment"># "好" → 0.35,  "棒" → 0.25,  "美" → 0.15,  "妙" → 0.10,  "佳" → 0.05</span>
+
+<span class="keyword">Greedy（贪心）</span>：始终选概率最高的
+  → 总是选 "好"（确定性，但可能重复单调）
+
+<span class="keyword">Temperature（温度）</span>：控制概率的"尖锐度"
+  T=0.1 → [0.85, 0.12, 0.02, 0.01, 0.00]  <span class="comment"># 几乎确定选"好"</span>
+  T=1.0 → [0.35, 0.25, 0.15, 0.10, 0.05]  <span class="comment"># 原始分布</span>
+  T=2.0 → [0.28, 0.24, 0.20, 0.16, 0.12]  <span class="comment"># 更均匀，更随机</span>
+
+<span class="keyword">Top-K</span>：只从概率最高的 K 个中采样
+  K=3 → 只从 "好/棒/美" 中选（排除低概率的奇怪选项）
+
+<span class="keyword">Top-P (Nucleus)</span>：只从累积概率达到 P 的最小集合中采样
+  P=0.8 → "好"(0.35) + "棒"(0.25) + "美"(0.15) + "妙"(0.10) = 0.85 > 0.8
+  → 从 "好/棒/美/妙" 这 4 个中采样
+
+<span class="comment"># 实际使用中通常组合多种策略：</span>
+<span class="comment"># temperature=0.7, top_p=0.9 是一个常见的平衡设置</span></div>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>策略</th><th>适用场景</th><th>效果</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>T=0 (Greedy)</td><td>代码、数学、事实问答</td><td>确定性、一致性</td></tr>
+      <tr><td>T=0.3-0.7</td><td>日常对话、写作辅助</td><td>平衡创造性与准确性</td></tr>
+      <tr><td>T=1.0+</td><td>创意写作、头脑风暴</td><td>多样性强、可能偏离主题</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ==================== 7. 长上下文优化 ==================== -->
+<section>
+  <h2><span class="num">7</span> 长上下文的挑战与优化</h2>
+
+  <p>现代大模型的上下文窗口越来越长（GPT-4 128K、Claude 200K、Gemini 1M+）。但更长的上下文意味着更大的 KV Cache 和更慢的注意力计算（Attention 复杂度是 O(n²)）。</p>
+
+  <div class="code-block"><span class="comment"># 上下文长度 vs 资源需求（以 LLaMA-70B 为例）：</span>
+
+上下文 4K:   KV Cache ≈ <span class="number">6.5 GB</span>     Attention 计算 ≈ <span class="number">1×</span>
+上下文 32K:  KV Cache ≈ <span class="number">52 GB</span>      Attention 计算 ≈ <span class="number">64×</span>
+上下文 128K: KV Cache ≈ <span class="number">208 GB</span>     Attention 计算 ≈ <span class="number">1024×</span>
+
+<span class="comment"># KV Cache 随长度线性增长</span>
+<span class="comment"># Attention 计算随长度平方增长（每个 token 要和所有前面的 token 算注意力）</span></div>
+
+  <p><strong>关键优化技术：</strong></p>
+
+  <p><span class="hl2">① Flash Attention</span>——重新排列注意力的计算顺序，让它对 GPU 内存层级更友好（减少 HBM 读写次数）。不改变计算结果，纯粹的工程优化，速度提升 2-4×，显存节省 5-20×。</p>
+
+  <p><span class="hl2">② GQA（Grouped Query Attention）</span>——让多个 Query Head 共享同一组 Key/Value Head。LLaMA-2 70B 用 8 组 KV 服务 64 个 Query Head，KV Cache 大小降低 8×。</p>
+
+  <p><span class="hl2">③ Sliding Window Attention</span>——每个 token 只看最近的 N 个 token（如 4096 个），而不是整个上下文。Mistral 用此方法支持超长序列而不爆显存。</p>
+
+  <div class="insight-box">
+    <span class="icon">🔭</span>
+    <p><strong>Flash Attention 的直觉：</strong>想象你要计算 1000×1000 的矩阵乘法。如果一次性把整个矩阵加载到高速缓存——放不下。Flash Attention 的做法是"分块计算"：每次只加载一小块数据到 SRAM（极快但极小），在 SRAM 里算完再写回 HBM。就像把一本巨大的字典拆成小册子，每次只查一册。减少了 GPU 显存（HBM）的读写次数，获得了巨大的加速。</p>
+  </div>
+</section>
+
+<!-- ==================== 8. 实际部署数据 ==================== -->
+<section>
+  <h2><span class="num">8</span> 实际数据：各种优化的效果</h2>
+
+  <p>把所有优化叠加在一起，能达到惊人的效果：</p>
+
+  <div class="speed-demo">
+    <h3>⚡ 推理速度对比（LLaMA-70B，单张 A100）</h3>
+    <div class="speed-bars">
+      <div class="speed-item">
+        <div class="speed-label">朴素实现</div>
+        <div class="speed-track"><div class="speed-fill" style="width:5%;background:var(--red)"></div></div>
+        <div class="speed-val">~2 tok/s</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">+ KV Cache</div>
+        <div class="speed-track"><div class="speed-fill" style="width:15%;background:var(--orange)"></div></div>
+        <div class="speed-val">~8 tok/s</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">+ Flash Attention</div>
+        <div class="speed-track"><div class="speed-fill" style="width:25%;background:var(--yellow)"></div></div>
+        <div class="speed-val">~15 tok/s</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">+ INT4 量化</div>
+        <div class="speed-track"><div class="speed-fill" style="width:60%;background:var(--green)"></div></div>
+        <div class="speed-val">~35 tok/s</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">+ 投机采样</div>
+        <div class="speed-track"><div class="speed-fill" style="width:85%;background:var(--cyan)"></div></div>
+        <div class="speed-val">~50 tok/s</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-label">+ Continuous Batch</div>
+        <div class="speed-track"><div class="speed-fill" style="width:100%;background:var(--purple)"></div></div>
+        <div class="speed-val">~2000 tok/s*</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:8px">* Continuous Batching 优化的是吞吐量（多用户），前面几项优化的是单请求延迟。数据为近似估计。</p>
+  </div>
+
+  <div class="code-block"><span class="comment"># 你日常使用的 ChatGPT/Claude 的典型参数：</span>
+
+模型大小:     ~1T 参数 (MoE, 激活约 200B)
+上下文窗口:   128K-200K tokens
+推理框架:     定制优化（相当于 vLLM++）
+精度:         FP8/INT8 混合
+GPU:          数千张 H100 集群
+响应速度:     ~50-80 tokens/s（用户感知）
+并发用户:     数百万同时在线
+
+<span class="comment"># 背后的工程复杂度远超模型本身：</span>
+<span class="comment"># 负载均衡、故障转移、缓存层、速率限制、</span>
+<span class="comment"># 内容审核、流式传输……每一项都是工程挑战</span></div>
+</section>
+
+<!-- ==================== 9. Quiz ==================== -->
+<section>
+  <h2><span class="num">9</span> 检验你的理解</h2>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: KV Cache 为什么能加速推理？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">它压缩了模型参数，减少了读取时间</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">缓存已计算过的 K/V 向量，避免每步重新计算所有历史 token</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">它让模型跳过不重要的 token，只处理关键内容</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！在自回归生成中，每一步都需要和所有历史 token 计算注意力。如果不缓存，每步都要重新计算前面所有 token 的 K 和 V。有了 KV Cache，只需计算新 token 的 K/V，然后和缓存中的做注意力计算即可。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ KV Cache 不涉及压缩或跳过 token。它的核心是"记住已算过的"——每步只算新增的一个 token 的 K/V，历史的直接从缓存读取。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: INT4 量化把 70B 模型从 140GB 压缩到约 35GB，主要原因是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">删除了不重要的参数（剪枝）</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">每个参数从 16 位表示改为 4 位表示，存储空间直接减少到 1/4</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">把模型压缩为 ZIP 文件</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！量化不删除任何参数，只是用更少的位数来表示同样的值。16位→4位，存储量直接变为 1/4。这会引入微小的精度误差，但神经网络对此非常鲁棒——大多数任务几乎无损。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ 量化不是剪枝（不删除参数）也不是通用压缩。它是把每个参数的数值精度降低——从 16 位浮点数变为 4 位整数。参数数量不变，但每个参数占用的空间减少了 4 倍。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: 投机采样（Speculative Decoding）为什么能保证输出质量不下降？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">因为小模型和大模型一样准确</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">因为只在简单 token 上用小模型</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">大模型验证每个 token，用拒绝采样保证最终分布与大模型一致</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！投机采样的精妙之处在于：小模型生成候选，但大模型有最终决定权。通过 rejection sampling（拒绝采样），不一致的 token 会被拒绝并重新采样，保证最终输出的概率分布与纯大模型生成完全一致。加速但不牺牲质量。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 关键在于大模型"验证"了每个 token。小模型只是提供"草稿"，大模型做最终裁判——同意则接受，不同意则按大模型的分布重新采样。数学上保证了最终结果和直接用大模型一样。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: Temperature = 0 时，模型的生成行为是？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">贪心解码：每步总是选择概率最高的 token，输出完全确定</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">模型停止生成（温度为零 = 没有"能量"）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">完全随机选择，每次输出都不同</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！Temperature → 0 时，概率分布变成"one-hot"——最高概率的 token 趋向 100%，其他趋向 0%。效果等同于贪心解码，每次运行结果完全一致。适合需要确定性的场景（代码、数学），但可能缺乏多样性。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ Temperature 控制概率分布的"尖锐度"。T→0 让分布极度集中在最高概率的 token 上（贪心）。T→∞ 才是完全均匀/随机。T=1 是原始分布。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">10</span> 编程练习：实现推理优化</h2>
+
+  <p>本课的编程练习将让你实现推理中最核心的几个优化技术。你会亲手体会为什么 KV Cache 能带来巨大加速，量化如何节省空间，以及不同采样策略的效果差异。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：实现推理优化</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：kv_cache_generate()</strong> — 实现带 KV Cache 的生成<br>
+      <span style="font-size:13px;color:var(--text-dim)">对比有/无 KV Cache 的计算量差异——理解为什么缓存如此重要。</span>
+    </p>
+    <p>
+      <strong>任务 2：quantize_and_dequantize()</strong> — 实现量化与反量化<br>
+      <span style="font-size:13px;color:var(--text-dim)">把浮点数映射到整数范围，再映射回来，观察精度损失有多小。</span>
+    </p>
+    <p>
+      <strong>任务 3：temperature_sampling()</strong> — 实现温度采样<br>
+      <span style="font-size:13px;color:var(--text-dim)">用温度参数调节概率分布的尖锐度，体验从贪心到随机的连续变化。</span>
+    </p>
+    <p>
+      <strong>任务 4：top_p_sampling()</strong> — 实现 Top-P（Nucleus）采样<br>
+      <span style="font-size:13px;color:var(--text-dim)">只从累积概率达到阈值的最小 token 集合中采样——自适应的候选集大小。</span>
+    </p>
+    <p>
+      <strong>任务 5：speculative_decode()</strong> — 实现投机采样<br>
+      <span style="font-size:13px;color:var(--text-dim)">用小模型生成草稿，大模型验证并决定接受多少——体验"空间换时间"的精妙。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了推理优化的核心技术！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../05-rlhf/lesson.html">← 上一课：RLHF 与对齐</a>
+    <a href="../07-finetuning/lesson.html">下一课：微调与 LoRA →</a>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

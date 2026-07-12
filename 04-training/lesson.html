@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第四课：训练 — 模型如何从数据中学习</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #34d399;
+    --accent2: #6c8cff;
+    --green: #34d399;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+  .hero {
+    min-height: 50vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px 40px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(52,211,153,0.15) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(52,211,153,0.15); color: var(--accent);
+    padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    margin-bottom: 20px; position: relative;
+  }
+  .hero h1 { font-size: clamp(28px,5vw,48px); font-weight: 800; position: relative; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin-top: 16px; position: relative; }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  p { margin-bottom: 16px; }
+  .hl { color: var(--accent); font-weight: 600; }
+  .hl2 { color: var(--accent2); font-weight: 600; }
+  .hl-orange { color: var(--orange); font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+  .hl-cyan { color: var(--cyan); font-weight: 600; }
+
+  .story-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; position: relative; overflow: hidden;
+  }
+  .story-card::before { content: '🎯'; position: absolute; top: -10px; right: -10px; font-size: 80px; opacity: 0.06; }
+  .story-card h3 { font-size: 20px; margin-bottom: 12px; color: var(--accent); }
+
+  .insight-box {
+    background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 12px; padding: 20px 24px; margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box.blue { background: rgba(108,140,255,0.08); border-color: rgba(108,140,255,0.2); }
+  .insight-box.purple { background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+  .insight-box.orange { background: rgba(251,146,60,0.08); border-color: rgba(251,146,60,0.2); }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; margin: 16px 0;
+    font-family: 'SF Mono','Fira Code',monospace; font-size: 14px;
+    line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+  }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+  .code-block .number { color: var(--orange); }
+
+  .blockquote {
+    padding: 16px 20px; border-left: 3px solid var(--accent);
+    margin: 16px 0; color: var(--text-dim); font-size: 15px;
+  }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; align-items: center; gap: 0; margin: 32px 0;
+    overflow-x: auto; padding: 8px 0;
+  }
+  .pipeline-step { text-align: center; flex-shrink: 0; min-width: 110px; }
+  .pipeline-step .icon-box {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 8px;
+    border: 2px solid var(--border); background: var(--surface); transition: all 0.3s;
+  }
+  .pipeline-step:hover .icon-box { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(52,211,153,0.2); }
+  .pipeline-step .label { font-size: 13px; font-weight: 600; }
+  .pipeline-step .sublabel { font-size: 11px; color: var(--text-dim); }
+  .pipeline-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 20px; padding: 0 4px; }
+
+  /* ---- Training loop visual ---- */
+  .loop-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px; margin: 24px 0; display: flex; flex-direction: column; align-items: center;
+  }
+  .loop-step {
+    width: 320px; padding: 14px 20px; border-radius: 10px;
+    text-align: center; font-size: 14px; font-weight: 600;
+    margin: 4px 0; position: relative;
+  }
+  .loop-arrow { color: var(--text-dim); font-size: 18px; margin: 2px 0; }
+  .loop-back {
+    margin-top: 16px; padding: 8px 20px; border-radius: 20px;
+    border: 2px dashed var(--accent); color: var(--accent);
+    font-size: 13px; font-weight: 600;
+  }
+
+  /* ---- Loss chart ---- */
+  .loss-chart {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0;
+  }
+  .loss-chart h3 { font-size: 18px; margin-bottom: 12px; }
+  .chart-area { position: relative; height: 200px; margin: 16px 0; }
+  .chart-area canvas { width: 100%; height: 100%; }
+
+  /* ---- Scale table ---- */
+  .scale-table {
+    width: 100%; border-collapse: collapse; margin: 16px 0;
+    font-size: 14px;
+  }
+  .scale-table th, .scale-table td {
+    padding: 12px 16px; border: 1px solid var(--border); text-align: left;
+  }
+  .scale-table th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  .scale-table td { background: var(--surface2); }
+  .scale-table tr:hover td { background: rgba(52,211,153,0.05); }
+
+  /* ---- Quiz ---- */
+  .quiz { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 24px 0; }
+  .quiz h3 { font-size: 18px; margin-bottom: 16px; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 15px; cursor: pointer; margin-bottom: 8px; transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(52,211,153,0.05); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(52,211,153,0.1); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(248,113,113,0.1); }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(52,211,153,0.1); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px; border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .lesson-nav a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  /* ---- Gradient descent animation ---- */
+  .gd-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; margin: 24px 0; text-align: center;
+  }
+  .gd-demo h3 { font-size: 18px; margin-bottom: 12px; text-align: left; }
+  .gd-canvas-wrap { position: relative; display: inline-block; }
+  .gd-controls { margin-top: 16px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .gd-controls button {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-dim); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .gd-controls button:hover { border-color: var(--accent); color: var(--accent); }
+  .gd-controls button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; }
+    .scale-table { font-size: 12px; }
+    .scale-table th, .scale-table td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <div class="badge">第四课 · 模型训练</div>
+  <h1>训练<br><span>模型如何从数据中学习</span></h1>
+  <p>前三课我们搞清了模型的"身体结构"——Tokenization、Embedding、Transformer。但一个随机初始化的模型和一个训练好的模型，区别就像白纸和百科全书。这节课，我们揭开训练的全过程：模型如何从"什么都不懂"变成"能写诗能编程"。</p>
+</div>
+
+<div class="container">
+
+<!-- ==================== 0. 回顾 ==================== -->
+<section>
+  <h2><span class="num">0</span> 快速回顾：我们在哪里？</h2>
+
+  <p>经过前三课，我们已经理解了一个大模型的完整推理（前向传播）过程。但如果你随机初始化所有参数（Embedding 矩阵、Q/K/V 权重、FFN 权重……），这个模型只会输出<span class="hl-orange">随机的胡言乱语</span>。</p>
+
+  <p>训练的目标就是：<span class="hl">通过海量数据，让模型学会每个参数应该取什么值</span>。</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🔤</div>
+      <div class="label" style="opacity:0.4">Tokenization</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">📐</div>
+      <div class="label" style="opacity:0.4">Embedding</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.4">🧠</div>
+      <div class="label" style="opacity:0.4">Transformer</div>
+      <div class="sublabel" style="color:var(--green)">✓ 已学</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="border-color:var(--accent);box-shadow:0 0 20px rgba(52,211,153,0.3)">🎯</div>
+      <div class="label" style="color:var(--accent)">训练</div>
+      <div class="sublabel">本课重点 ★</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="icon-box" style="opacity:0.5">🚀</div>
+      <div class="label" style="opacity:0.5">部署推理</div>
+    </div>
+  </div>
+
+  <p>本课的核心问题是：<span class="hl">模型的几十亿甚至几千亿参数，是怎么被"调"到正确值的？</span></p>
+</section>
+
+<!-- ==================== 1. 训练的本质 ==================== -->
+<section>
+  <h2><span class="num">1</span> 训练的本质：一个巨大的优化问题</h2>
+
+  <p>大模型训练的逻辑极其简单，三句话就能说清：</p>
+
+  <div class="story-card">
+    <h3>训练三步走</h3>
+    <p><strong>① 前向传播：</strong>把一段文本喂给模型，让它预测下一个 token</p>
+    <p><strong>② 计算损失：</strong>把模型的预测和真实答案做对比，算出"错得有多离谱"（Loss）</p>
+    <p><strong>③ 反向传播 + 参数更新：</strong>根据"错误信号"，微调每个参数，让下次预测更准</p>
+    <p style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);color:var(--text-dim)">然后重复以上三步，几十万次、几百万次……直到 Loss 足够低。</p>
+  </div>
+
+  <p>这就像一个学生做作业：做题（前向）→ 对答案（算损失）→ 分析错因并纠正（反向更新）→ 做下一题……循环往复，越来越好。</p>
+
+  <div class="insight-box">
+    <span class="icon">💡</span>
+    <p><strong>关键直觉：</strong>训练不是"编程"——没有人告诉模型"遇到问号就回答问题"或者"名词后面跟动词"。模型的所有能力都是从"预测下一个 token"这个单一目标中<strong>涌现</strong>出来的。为了更好地预测下一个词，模型被迫学会了语法、语义、逻辑、甚至世界知识。</p>
+  </div>
+</section>
+
+<!-- ==================== 2. Loss Function ==================== -->
+<section>
+  <h2><span class="num">2</span> 损失函数：衡量"猜得有多差"</h2>
+
+  <p>训练的第一步是量化模型的"错误程度"。这个量化工具就是 <span class="hl">损失函数（Loss Function）</span>。对于语言模型，使用的是 <span class="hl">交叉熵损失（Cross-Entropy Loss）</span>。</p>
+
+  <p>假设词表有 50,000 个 token，模型对下一个 token 输出了一个 50,000 维的概率分布。而真实答案是某一个特定的 token（比如 ID=1234 的 "猫"）。</p>
+
+  <div class="code-block"><span class="comment"># 交叉熵损失的计算：</span>
+
+<span class="comment"># 模型输出的概率分布（经过 Softmax 后）：</span>
+probs = [<span class="number">0.001</span>, <span class="number">0.002</span>, ..., <span class="number">0.15</span>, ..., <span class="number">0.003</span>]   <span class="comment"># 50000 个值</span>
+<span class="comment">#                              ↑</span>
+<span class="comment">#                     token "猫" 的位置</span>
+
+<span class="comment"># 真实答案：token "猫" 的 ID = 1234</span>
+target = <span class="number">1234</span>
+
+<span class="comment"># 交叉熵损失 = -log(模型给正确答案的概率)</span>
+loss = -log(probs[target])
+loss = -log(<span class="number">0.15</span>) = <span class="number">1.897</span>
+
+<span class="comment"># 如果模型对正确答案给了很高的概率（如 0.95）：</span>
+loss = -log(<span class="number">0.95</span>) = <span class="number">0.051</span>    <span class="comment"># 损失很低 ✓ 预测很好</span>
+
+<span class="comment"># 如果模型对正确答案给了极低的概率（如 0.001）：</span>
+loss = -log(<span class="number">0.001</span>) = <span class="number">6.908</span>   <span class="comment"># 损失很高 ✗ 预测很差</span></div>
+
+  <p>直觉解读：</p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><strong>Loss = 0</strong>：完美预测（给正确答案 100% 概率）—— 不可能达到，自然语言有内在的不确定性</li>
+    <li><strong>Loss ≈ 1-2</strong>：很好的预测（正确答案在 Top-3 以内）</li>
+    <li><strong>Loss ≈ 10+</strong>：几乎是瞎猜（随机初始化时的水平：-log(1/50000) ≈ 10.8）</li>
+  </ul>
+
+  <div class="insight-box blue">
+    <span class="icon">📊</span>
+    <p><strong>为什么用 -log？</strong>因为 log 有一个完美的特性：当概率接近 1 时，-log 接近 0（好的预测惩罚小）；当概率接近 0 时，-log 趋向无穷大（坏的预测惩罚极大）。这让模型受到强烈的激励去给正确答案分配高概率。同时 log 的导数形式简洁，便于计算梯度。</p>
+  </div>
+
+  <div class="gd-demo">
+    <h3>📉 -log(x) 曲线：直观感受损失函数</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;text-align:left">横轴是模型给正确答案的概率 p（0 到 1），纵轴是损失值 -log(p)。鼠标移上去查看任意点的值。注意曲线<strong>左陡右平</strong>的特征——猜得越离谱，惩罚增长越猛烈。</p>
+    <div class="gd-canvas-wrap">
+      <canvas id="neglog-canvas" width="600" height="280"></canvas>
+    </div>
+  </div>
+
+  <p>对于一整段文本，总损失是每个位置损失的平均：</p>
+  <div class="code-block"><span class="comment"># 训练文本："今天天气真好"（5 个 token）</span>
+<span class="comment"># 每个位置都要预测下一个 token：</span>
+
+position 0: 输入 "今"     → 预测 "天"   → loss₀ = -log(p("天"))
+position 1: 输入 "今天"   → 预测 "天"   → loss₁ = -log(p("天"))
+position 2: 输入 "今天天" → 预测 "气"   → loss₂ = -log(p("气"))
+position 3: 输入 "今天天气" → 预测 "真" → loss₃ = -log(p("真"))
+position 4: 输入 "今天天气真" → 预测 "好" → loss₄ = -log(p("好"))
+
+<span class="comment"># 总损失 = 所有位置损失的平均</span>
+total_loss = (loss₀ + loss₁ + loss₂ + loss₃ + loss₄) / <span class="number">5</span></div>
+</section>
+
+<!-- ==================== 3. 梯度下降 ==================== -->
+<section>
+  <h2><span class="num">3</span> 梯度下降：朝"更好"的方向走一步</h2>
+
+  <p>有了 Loss，我们知道模型现在有多差。但<span class="hl-orange">知道差不等于知道怎么改</span>。模型有几十亿个参数，每个参数该往上调还是往下调、调多少？这就是 <span class="hl">梯度下降（Gradient Descent）</span> 要解决的问题。</p>
+
+  <p><strong>核心思想：</strong>对每个参数，计算"如果这个参数增大一点点，Loss 会增大还是减小？"这个"变化率"就是 <span class="hl">梯度（Gradient）</span>。然后让参数朝着 Loss 减小的方向移动。</p>
+
+  <div class="code-block"><span class="comment"># 梯度下降的更新公式：</span>
+
+参数_new = 参数_old - learning_rate × 梯度
+
+<span class="comment"># 例：某个权重 w = 0.5，梯度 = 2.3</span>
+<span class="comment"># learning_rate = 0.001</span>
+w_new = <span class="number">0.5</span> - <span class="number">0.001</span> × <span class="number">2.3</span> = <span class="number">0.4977</span>
+
+<span class="comment"># 梯度为正 → 参数增大会增加 Loss → 所以减小参数</span>
+<span class="comment"># 梯度为负 → 参数增大会减少 Loss → 所以增大参数</span>
+<span class="comment"># 总之，参数总是朝着让 Loss 减小的方向移动</span></div>
+
+  <div class="gd-demo">
+    <h3>🏔️ 可视化：梯度下降找最低点</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;text-align:left">想象 Loss 是一个山谷的地形图，梯度下降就是小球从山坡上滚到最低点。点击按钮观察不同学习率的效果：</p>
+    <div class="gd-canvas-wrap">
+      <canvas id="gd-canvas" width="600" height="220"></canvas>
+    </div>
+    <div class="gd-controls">
+      <button onclick="startGD(0.01)" id="gd-btn-slow">学习率=0.01（太慢）</button>
+      <button onclick="startGD(0.1)" id="gd-btn-good" class="active">学习率=0.1（刚好）</button>
+      <button onclick="startGD(0.5)" id="gd-btn-fast">学习率=0.5（太大）</button>
+    </div>
+  </div>
+
+  <p><span class="hl2">学习率（Learning Rate）</span>是训练中最重要的超参数之一：</p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><strong>太小：</strong>每步移动微小，训练极慢，可能困在局部最优</li>
+    <li><strong>太大：</strong>每步跨太远，在最优解附近反复震荡，甚至发散（Loss 越来越大）</li>
+    <li><strong>合适：</strong>快速收敛到最优解附近</li>
+  </ul>
+
+  <div class="insight-box">
+    <span class="icon">🎓</span>
+    <p><strong>类比：</strong>梯度下降就像在雾天下山——你看不到全貌，只能感受脚下的坡度（梯度），然后朝着"最陡下坡方向"迈一步。学习率就是你的步幅：步子太小会在山上走到天黑；步子太大会直接冲下悬崖或者在山谷两侧来回弹跳。</p>
+  </div>
+</section>
+
+<!-- ==================== 4. 反向传播 ==================== -->
+<section>
+  <h2><span class="num">4</span> 反向传播：高效计算所有梯度</h2>
+
+  <p>一个大模型有几十亿个参数。如果对每个参数单独测试"增大一点点看 Loss 变多少"，那计算量是不可接受的。<span class="hl">反向传播（Backpropagation）</span>用一次巧妙的递推就能<strong>同时算出所有参数的梯度</strong>。</p>
+
+  <p>它的核心原理是微积分中的<span class="hl2">链式法则（Chain Rule）</span>：</p>
+
+  <div class="code-block"><span class="comment"># 链式法则的直觉：</span>
+<span class="comment"># 假设 Loss 依赖于 A，A 依赖于 B，B 依赖于参数 w</span>
+<span class="comment"># Loss = f(A), A = g(B), B = h(w)</span>
+
+<span class="comment"># 那么 Loss 对 w 的梯度 = 各环节梯度的乘积：</span>
+∂Loss/∂w = (∂Loss/∂A) × (∂A/∂B) × (∂B/∂w)
+
+<span class="comment"># 就像多米诺骨牌：</span>
+<span class="comment"># w 变了 → B 跟着变 → A 跟着变 → Loss 跟着变</span>
+<span class="comment"># 每一环的"传导率"相乘 = 总的影响</span></div>
+
+  <p>反向传播的计算方向是<span class="hl-orange">从后往前</span>（从 Loss 回推到每个参数）：</p>
+
+  <div class="code-block"><span class="comment"># 前向传播（从左到右）：</span>
+Input → Embedding → Attention → FFN → ... → Softmax → Loss
+
+<span class="comment"># 反向传播（从右到左）：</span>
+Loss → ∂L/∂Softmax → ∂L/∂FFN → ∂L/∂Attention → ∂L/∂Embedding → ∂L/∂参数
+
+<span class="comment"># 每到一层就能算出该层所有参数的梯度</span>
+<span class="comment"># 一次前向 + 一次反向 = 所有参数梯度全部算完</span></div>
+
+  <div class="insight-box purple">
+    <span class="icon">⚡</span>
+    <p><strong>反向传播的精妙之处：</strong>假设有 1750 亿个参数（GPT-3）。如果用"逐个试探"的笨办法，需要做 1750 亿次前向传播来算梯度。但反向传播只需要<strong>一次前向 + 一次反向</strong>——约等于两次前向的计算量。这个算法把时间复杂度从 O(参数量 × 前向计算) 降到了 O(前向计算)，是深度学习能够成功的关键之一。</p>
+  </div>
+</section>
+
+<!-- ==================== 5. 完整训练循环 ==================== -->
+<section>
+  <h2><span class="num">5</span> 完整的训练循环</h2>
+
+  <p>把前面的知识串起来，这是一个完整的训练步骤：</p>
+
+  <div class="loop-visual">
+    <div class="loop-step" style="background:rgba(108,140,255,0.15);border:1px solid rgba(108,140,255,0.3)">
+      ① 从训练数据中取一个 Batch（批次）
+    </div>
+    <div class="loop-arrow">↓</div>
+    <div class="loop-step" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3)">
+      ② 前向传播：输入 → 模型 → 预测概率
+    </div>
+    <div class="loop-arrow">↓</div>
+    <div class="loop-step" style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.3)">
+      ③ 计算 Loss（预测 vs 真实的差距）
+    </div>
+    <div class="loop-arrow">↓</div>
+    <div class="loop-step" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3)">
+      ④ 反向传播：算出所有参数的梯度
+    </div>
+    <div class="loop-arrow">↓</div>
+    <div class="loop-step" style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3)">
+      ⑤ 更新参数：参数 -= 学习率 × 梯度
+    </div>
+    <div class="loop-back">↺ 重复几百万次，直到 Loss 足够低</div>
+  </div>
+
+  <div class="code-block"><span class="comment"># 伪代码：训练循环</span>
+
+model = initialize_random_parameters()
+optimizer = Adam(lr=<span class="number">3e-4</span>)
+
+<span class="keyword">for</span> step <span class="keyword">in</span> range(<span class="number">500_000</span>):           <span class="comment"># 训练 50 万步</span>
+    batch = get_random_batch(data)       <span class="comment"># 取一批训练数据</span>
+
+    predictions = model.forward(batch)   <span class="comment"># 前向传播</span>
+    loss = cross_entropy(predictions, targets)  <span class="comment"># 算损失</span>
+
+    gradients = model.backward(loss)     <span class="comment"># 反向传播</span>
+    optimizer.step(gradients)            <span class="comment"># 更新参数</span>
+
+    <span class="keyword">if</span> step % <span class="number">1000</span> == <span class="number">0</span>:
+        print(f<span class="string">"Step {step}, Loss: {loss:.4f}"</span>)  <span class="comment"># 监控进度</span></div>
+
+  <p><strong>Batch（批次）</strong>的概念很重要：每一步不是只处理一个样本，而是同时处理一"批"样本（比如 2048 个序列），然后用这批样本的平均梯度来更新参数。这样做的好处是：</p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li>单个样本的梯度可能有噪声——一批样本的平均梯度更稳定、方向更准</li>
+    <li>GPU 擅长并行计算——处理 1 个和处理 2048 个的时间差不多</li>
+  </ul>
+</section>
+
+<!-- ==================== 6. 训练数据 ==================== -->
+<section>
+  <h2><span class="num">6</span> 训练数据：用什么来教模型？</h2>
+
+  <p>训练大模型需要<span class="hl">海量高质量文本数据</span>。数据的质量和规模直接决定了模型的能力上限。</p>
+
+  <div class="code-block"><span class="comment"># 主流大模型的训练数据规模：</span>
+
+GPT-3:      <span class="number">300B</span> tokens  (<span class="number">3000 亿</span>)
+LLaMA-2:    <span class="number">2T</span> tokens   (<span class="number">2 万亿</span>)
+LLaMA-3:    <span class="number">15T</span> tokens  (<span class="number">15 万亿</span>)
+DeepSeek-V3: <span class="number">14.8T</span> tokens
+
+<span class="comment"># 数据来源（典型构成）：</span>
+网页文本 (Common Crawl):    ~60%    <span class="comment"># 互联网爬取</span>
+书籍:                       ~15%    <span class="comment"># 电子书、学术著作</span>
+代码 (GitHub):              ~10%    <span class="comment"># 编程能力的来源</span>
+学术论文 (arXiv):           ~5%     <span class="comment"># 科学知识</span>
+维基百科:                   ~3%     <span class="comment"># 结构化知识</span>
+其他 (论坛、问答、新闻):    ~7%</div>
+
+  <p><strong>数据质量比数量更重要：</strong></p>
+  <ul style="padding-left:24px;margin-bottom:16px">
+    <li><span class="hl">去重</span>：互联网上大量文本是重复的，不去重模型会"背诵"而非"学习"</li>
+    <li><span class="hl">过滤</span>：去掉低质量内容（广告、乱码、生成式垃圾文本）</li>
+    <li><span class="hl">配比</span>：不同类型数据的比例影响模型的能力分布</li>
+  </ul>
+
+  <div class="insight-box orange">
+    <span class="icon">📚</span>
+    <p><strong>数据决定能力：</strong>模型只能学到训练数据中包含的知识。如果数据中没有某种语言、某个领域、或者某种推理模式——模型就不会那些能力。这就是为什么"数据工程"在大模型训练中地位如此重要，某种意义上比模型架构本身更重要。"Garbage in, garbage out"——数据差，模型再大也没用。</p>
+  </div>
+</section>
+
+<!-- ==================== 7. 优化技巧 ==================== -->
+<section>
+  <h2><span class="num">7</span> 优化技巧：让训练更快更稳</h2>
+
+  <p>简单的梯度下降在实际训练大模型时远远不够。几十年的研究产出了很多关键的优化技巧：</p>
+
+  <p><strong>🔹 Adam 优化器</strong></p>
+  <p>目前训练大模型最常用的优化器。它为每个参数维护了"动量"（过去梯度的移动平均）和"二阶矩"（梯度大小的移动平均），让参数更新更平滑、更自适应。</p>
+
+  <div class="code-block"><span class="comment"># Adam 的直觉：</span>
+<span class="comment"># 普通梯度下降：一步一步走，每步只看当前坡度</span>
+<span class="comment"># Adam：像一个有惯性的小球滚下山</span>
+<span class="comment">#   - 有动量：不会因为一步的随机噪声就改变方向</span>
+<span class="comment">#   - 自适应：对"地形平坦"的维度步子大，"地形陡峭"的维度步子小</span>
+
+<span class="comment"># 超参数（几乎所有大模型都用这套）：</span>
+lr = <span class="number">3e-4</span>          <span class="comment"># 峰值学习率（会随训练调整）</span>
+beta1 = <span class="number">0.9</span>        <span class="comment"># 动量衰减系数</span>
+beta2 = <span class="number">0.999</span>      <span class="comment"># 二阶矩衰减系数</span>
+weight_decay = <span class="number">0.1</span> <span class="comment"># 权重衰减（防止过拟合）</span></div>
+
+  <p><strong>🔹 学习率调度（Learning Rate Schedule）</strong></p>
+  <p>学习率不是固定的，而是随训练过程动态变化：</p>
+
+  <div class="code-block"><span class="comment"># 典型的学习率变化曲线：</span>
+
+<span class="comment"># Warmup 阶段（前 1-2% 的步数）：</span>
+<span class="comment"># lr 从 0 线性增大到峰值 → 防止刚开始训练时梯度过大导致发散</span>
+
+<span class="comment"># Cosine Decay 阶段（剩余步数）：</span>
+<span class="comment"># lr 按余弦曲线缓慢衰减到接近 0 → 让训练后期更精细地收敛</span>
+
+       ╱‾‾‾╲
+      ╱      ╲
+     ╱        ╲
+    ╱           ╲
+   ╱              ╲
+──╱                 ╲──────
+  ↑                    ↑
+ warmup          cosine decay</div>
+
+  <p><strong>🔹 梯度裁剪（Gradient Clipping）</strong></p>
+  <p>如果某一步的梯度特别大（可能因为数据中的异常样本），直接更新可能让训练"炸掉"。梯度裁剪限制梯度的最大范数，就像给汽车装了限速器。</p>
+
+  <p><strong>🔹 混合精度训练（Mixed Precision）</strong></p>
+  <p>用较低精度的数字格式（FP16/BF16）做前向和反向计算，节省显存和计算量；但用全精度（FP32）存储参数和做更新，避免精度损失。训练速度提升约 2 倍，显存减半。</p>
+</section>
+
+<!-- ==================== 8. 训练规模 ==================== -->
+<section>
+  <h2><span class="num">8</span> 训练规模：大模型的训练有多贵？</h2>
+
+  <p>训练一个前沿大模型的资源消耗是惊人的：</p>
+
+  <table class="scale-table">
+    <thead>
+      <tr><th>模型</th><th>参数量</th><th>GPU</th><th>训练时长</th><th>估算成本</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>GPT-3</td><td>175B</td><td>~1000 × V100</td><td>~34 天</td><td>~$4.6M</td></tr>
+      <tr><td>LLaMA-2 70B</td><td>70B</td><td>2048 × A100</td><td>~25 天</td><td>~$2M</td></tr>
+      <tr><td>GPT-4</td><td>~1.8T (MoE)</td><td>~25000 × A100</td><td>~90 天</td><td>~$100M</td></tr>
+      <tr><td>DeepSeek-V3</td><td>671B (MoE)</td><td>2048 × H800</td><td>~60 天</td><td>~$5.5M</td></tr>
+    </tbody>
+  </table>
+
+  <p>这些数字背后的含义：</p>
+
+  <div class="code-block"><span class="comment"># 一些有趣的计算：</span>
+
+<span class="comment"># GPT-3 训练了 300B tokens</span>
+<span class="comment"># 每个 token 需要 ~6×N 次浮点运算（N=参数量）</span>
+<span class="comment"># 总计算量 = 6 × 175B × 300B = 3.15 × 10²³ FLOPS</span>
+
+<span class="comment"># 如果用一块 A100 GPU (312 TFLOPS)：</span>
+<span class="comment"># 需要 3.15e23 / 312e12 / 3600 / 24 ≈ 11,700 天 ≈ 32 年</span>
+<span class="comment"># 所以需要上千块 GPU 并行训练！</span>
+
+<span class="comment"># 电力消耗：训练一次 GPT-3 ≈ 1300 MWh</span>
+<span class="comment"># 大约等于 120 个美国家庭一年的用电量</span></div>
+
+  <div class="insight-box">
+    <span class="icon">💰</span>
+    <p><strong>Scaling Law（缩放定律）：</strong>OpenAI 2020 年的研究发现了一个惊人的规律——模型的性能（Loss）和三个因素存在幂律关系：参数量 N、数据量 D、计算量 C。只要你持续增加这三者，模型性能就会平滑、可预测地提升。这就是大家疯狂"卷算力"的理论基础——目前为止还没有看到天花板。</p>
+  </div>
+</section>
+
+<!-- ==================== 9. Quiz ==================== -->
+<section>
+  <h2><span class="num">9</span> 检验你的理解</h2>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: 交叉熵损失 loss = -log(p) 中，如果模型给正确答案的概率 p = 1，loss 等于多少？</h3>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">0（完美预测，没有损失）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">1（标准化损失）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">-1（负对数）</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！-log(1) = 0。当模型对正确答案的置信度为 100% 时，损失为零。但实际中几乎不可能达到——因为自然语言有内在的不确定性（同一个前文可以接多个合理的后续）。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ 回忆一下对数函数：log(1) = 0，所以 -log(1) = 0。当概率为 1 时损失为 0，概率越小损失越大。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: 梯度下降中，如果某个参数的梯度为负数，这个参数应该怎么更新？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">减小（因为梯度为负表示参数太大了）</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">增大（因为公式是 w -= lr × 梯度，减去负数就是加）</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">不变（负梯度意味着已经在最优点）</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！w_new = w - lr × (-负值) = w + lr × 正值，所以参数增大。直觉：梯度为负说明"增大参数会让 Loss 减小"，所以我们确实应该增大它。更新公式中的减号和负梯度一抵消，就是往增大方向走。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ 代入公式想一想：w_new = w - lr × gradient。如果 gradient = -2，那 w_new = w - lr×(-2) = w + 2lr。结果是参数增大了。梯度为负 = "增大这个参数有利于减小 Loss"。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: 反向传播的核心原理是什么？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">对每个参数单独做一次前向传播来计算梯度</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">随机采样估算梯度</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">利用链式法则，从 Loss 出发逐层向后递推，一次计算所有梯度</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！链式法则让我们可以把"Loss 对任意参数的梯度"分解为"各层之间的局部梯度"的乘积。从 Loss 出发，逐层向前传递梯度信号，每到一层就能算出该层所有参数的梯度。一次反向就搞定所有参数，复杂度仅为前向计算的约 2 倍。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 逐个试探需要 N 次前向（N=参数数量），对大模型来说不可行。反向传播用链式法则，一次递推就能算出所有参数的梯度。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: Batch Size（批大小）越大越好吗？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">是的，越大梯度越准，模型一定越好</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">不一定——太大会消耗过多显存，且可能影响泛化能力</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">Batch Size 对训练没有任何影响</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！更大的 Batch 确实给出更准的梯度估计，但也需要更多 GPU 显存。而且研究发现，适量的梯度噪声（来自小 Batch）反而有正则化效果，帮助模型泛化。实际中通常选择一个"够大但不过大"的 Batch Size，然后通过梯度累积来模拟更大的有效 Batch。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ Batch Size 的选择是一个 trade-off：更大→梯度更准、GPU 利用率更高；但也→显存占用大、可能过拟合。实际中需要平衡。</div>
+  </div>
+</section>
+
+<!-- ==================== 10. 编程练习 ==================== -->
+<section>
+  <h2><span class="num">10</span> 编程练习：手写训练循环</h2>
+
+  <p>本课的编程练习将让你从零实现一个迷你训练循环——包括损失计算、梯度计算和参数更新。虽然规模远比真实大模型小，但核心逻辑完全一致。你会亲眼看到随机初始化的参数如何通过训练逐渐变得"聪明"。</p>
+
+  <div class="story-card">
+    <h3>🛠️ 你的任务：手写训练循环</h3>
+    <p>在配套的 <code>exercise.py</code> 中，按顺序完成 5 个任务：</p>
+    <p>
+      <strong>任务 1：cross_entropy_loss()</strong> — 计算交叉熵损失<br>
+      <span style="font-size:13px;color:var(--text-dim)">给定预测概率和目标 ID，算出 -log(p[target])。这是驱动整个训练的"信号源"。</span>
+    </p>
+    <p>
+      <strong>任务 2：compute_gradient_numerical()</strong> — 用数值法算梯度<br>
+      <span style="font-size:13px;color:var(--text-dim)">微调一个参数，观察 Loss 变化，除以扰动量得到近似梯度。最朴素但直观的理解方式。</span>
+    </p>
+    <p>
+      <strong>任务 3：compute_softmax_gradient()</strong> — 计算 Softmax + 交叉熵的解析梯度<br>
+      <span style="font-size:13px;color:var(--text-dim)">推导出 logits 的梯度公式：对非目标位置是 p[i]，对目标位置是 p[i] - 1。简洁而优美。</span>
+    </p>
+    <p>
+      <strong>任务 4：update_parameters()</strong> — 执行一步梯度下降<br>
+      <span style="font-size:13px;color:var(--text-dim)">实现 w = w - lr × gradient。最简单但最核心的参数更新公式。</span>
+    </p>
+    <p>
+      <strong>任务 5：training_loop()</strong> — 完整的训练循环<br>
+      <span style="font-size:13px;color:var(--text-dim)">把所有步骤串起来：前向→损失→梯度→更新，循环执行，观察 Loss 从高到低的下降过程。</span>
+    </p>
+    <p style="color:var(--text-dim);font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      📂 打开 <code>exercise.py</code>，搜索 <code>TODO</code> 找到需要填写的位置<br>
+      ▶️ 每完成一个任务就运行 <code>python exercise.py</code> 查看测试结果<br>
+      🎉 全部 5 个测试通过 = 你已经理解了训练的完整闭环！
+    </p>
+  </div>
+
+  <div class="lesson-nav">
+    <a href="../03-transformer/lesson.html">← 上一课：Transformer</a>
+    <a href="../05-rlhf/lesson.html">下一课：RLHF 与对齐 →</a>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ============================================================
+// Gradient Descent Visualization
+// ============================================================
+const canvas = document.getElementById('gd-canvas');
+const ctx = canvas.getContext('2d');
+let animId = null;
+let gdPoints = [];
+let gdLr = 0.1;
+
+function lossFunc(x) {
+  return 0.5 * (x - 3) * (x - 3) + 0.3 * Math.sin(3 * x) + 2;
+}
+
+function lossGradient(x) {
+  return (x - 3) + 0.3 * 3 * Math.cos(3 * x);
+}
+
+function drawLossLandscape() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // axes
+  ctx.strokeStyle = '#2e3347';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, h - 30);
+  ctx.lineTo(w - 20, h - 30);
+  ctx.stroke();
+
+  // loss curve
+  ctx.strokeStyle = '#4a5568';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const xMin = -1, xMax = 7;
+  const yMin = 1, yMax = 12;
+  for (let px = 40; px <= w - 20; px++) {
+    const x = xMin + (px - 40) / (w - 60) * (xMax - xMin);
+    const y = lossFunc(x);
+    const py = h - 30 - (y - yMin) / (yMax - yMin) * (h - 50);
+    if (px === 40) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // labels
+  ctx.fillStyle = '#8b8fa8';
+  ctx.font = '12px -apple-system, sans-serif';
+  ctx.fillText('参数值 →', w - 80, h - 10);
+  ctx.save();
+  ctx.translate(15, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Loss ↑', 0, 0);
+  ctx.restore();
+
+  // draw points
+  for (let i = 0; i < gdPoints.length; i++) {
+    const pt = gdPoints[i];
+    const px = 40 + (pt.x - xMin) / (xMax - xMin) * (w - 60);
+    const py = h - 30 - (pt.y - yMin) / (yMax - yMin) * (h - 50);
+
+    if (i > 0) {
+      const prev = gdPoints[i - 1];
+      const ppx = 40 + (prev.x - xMin) / (xMax - xMin) * (w - 60);
+      const ppy = h - 30 - (prev.y - yMin) / (yMax - yMin) * (h - 50);
+      ctx.strokeStyle = 'rgba(52,211,153,0.3)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ppx, ppy);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.fillStyle = i === gdPoints.length - 1 ? '#34d399' : 'rgba(52,211,153,0.5)';
+    ctx.beginPath();
+    ctx.arc(px, py, i === gdPoints.length - 1 ? 6 : 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // minimum marker
+  const minPx = 40 + (3 - xMin) / (xMax - xMin) * (w - 60);
+  const minPy = h - 30 - (lossFunc(3) - yMin) / (yMax - yMin) * (h - 50);
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = '14px -apple-system, sans-serif';
+  ctx.fillText('★ 最优解', minPx - 20, minPy + 20);
+}
+
+function startGD(lr) {
+  gdLr = lr;
+  gdPoints = [];
+  if (animId) cancelAnimationFrame(animId);
+
+  document.querySelectorAll('.gd-controls button').forEach(b => b.classList.remove('active'));
+  if (lr === 0.01) document.getElementById('gd-btn-slow').classList.add('active');
+  else if (lr === 0.1) document.getElementById('gd-btn-good').classList.add('active');
+  else document.getElementById('gd-btn-fast').classList.add('active');
+
+  let x = -0.5;
+  gdPoints.push({ x, y: lossFunc(x) });
+  drawLossLandscape();
+
+  let step = 0;
+  const maxSteps = 30;
+
+  function animate() {
+    if (step >= maxSteps) return;
+    step++;
+    const grad = lossGradient(x);
+    x = x - gdLr * grad;
+    if (x < -1) x = -1;
+    if (x > 7) x = 7;
+    gdPoints.push({ x, y: lossFunc(x) });
+    drawLossLandscape();
+    animId = requestAnimationFrame(() => setTimeout(animate, 150));
+  }
+  setTimeout(animate, 300);
+}
+
+drawLossLandscape();
+setTimeout(() => startGD(0.1), 500);
+
+// ============================================================
+// -log(x) Curve Visualization
+// ============================================================
+(function() {
+  const nlCanvas = document.getElementById('neglog-canvas');
+  if (!nlCanvas) return;
+  const nlCtx = nlCanvas.getContext('2d');
+  let hoverX = null;
+
+  const pad = { l: 55, r: 20, t: 20, b: 45 };
+
+  const keyPoints = [
+    { p: 0.01, label: 'p=0.01', desc: '瞎猜' },
+    { p: 0.1,  label: 'p=0.1',  desc: '很差' },
+    { p: 0.5,  label: 'p=0.5',  desc: '犹豫' },
+    { p: 0.9,  label: 'p=0.9',  desc: '自信' },
+  ];
+
+  function negLog(p) { return -Math.log(Math.max(p, 1e-10)); }
+
+  function pToX(p) {
+    const aW = nlCanvas.width - pad.l - pad.r;
+    return pad.l + p * aW;
+  }
+  function lossToY(loss) {
+    const aH = nlCanvas.height - pad.t - pad.b;
+    const yMax = 5;
+    return pad.t + aH - (loss / yMax) * aH;
+  }
+
+  function drawNegLog() {
+    const W = nlCanvas.width, H = nlCanvas.height;
+    const aW = W - pad.l - pad.r, aH = H - pad.t - pad.b;
+    const yMax = 5;
+
+    nlCtx.clearRect(0, 0, W, H);
+
+    // axes
+    nlCtx.strokeStyle = '#2e3347';
+    nlCtx.lineWidth = 1;
+    nlCtx.beginPath();
+    nlCtx.moveTo(pad.l, pad.t);
+    nlCtx.lineTo(pad.l, H - pad.b);
+    nlCtx.lineTo(W - pad.r, H - pad.b);
+    nlCtx.stroke();
+
+    // y axis ticks & grid
+    nlCtx.font = '11px -apple-system, sans-serif';
+    nlCtx.textAlign = 'right';
+    for (let v = 0; v <= 5; v++) {
+      const y = lossToY(v);
+      nlCtx.fillStyle = '#8b8fa8';
+      nlCtx.fillText(v.toFixed(0), pad.l - 8, y + 4);
+      if (v > 0) {
+        nlCtx.strokeStyle = '#2e334730';
+        nlCtx.beginPath();
+        nlCtx.moveTo(pad.l, y);
+        nlCtx.lineTo(W - pad.r, y);
+        nlCtx.stroke();
+      }
+    }
+
+    // x axis ticks
+    nlCtx.textAlign = 'center';
+    for (let v = 0; v <= 1; v += 0.2) {
+      const x = pToX(v);
+      nlCtx.fillStyle = '#8b8fa8';
+      nlCtx.fillText(v.toFixed(1), x, H - pad.b + 18);
+    }
+
+    // axis labels
+    nlCtx.fillStyle = '#8b8fa8';
+    nlCtx.font = '12px -apple-system, sans-serif';
+    nlCtx.textAlign = 'center';
+    nlCtx.fillText('概率 p（模型给正确答案的概率）', W / 2, H - 5);
+    nlCtx.save();
+    nlCtx.translate(14, H / 2 - 10);
+    nlCtx.rotate(-Math.PI / 2);
+    nlCtx.fillText('损失 -log(p)', 0, 0);
+    nlCtx.restore();
+
+    // draw the -log(x) curve
+    nlCtx.beginPath();
+    nlCtx.strokeStyle = '#34d399';
+    nlCtx.lineWidth = 2.5;
+    const steps = 300;
+    for (let i = 0; i <= steps; i++) {
+      const p = 0.005 + (i / steps) * 0.995;
+      const px = pToX(p);
+      const py = lossToY(Math.min(negLog(p), yMax));
+      if (i === 0) nlCtx.moveTo(px, py);
+      else nlCtx.lineTo(px, py);
+    }
+    nlCtx.stroke();
+
+    // key reference points
+    keyPoints.forEach(kp => {
+      const px = pToX(kp.p);
+      const loss = negLog(kp.p);
+      const py = lossToY(Math.min(loss, yMax));
+
+      // dashed lines
+      nlCtx.strokeStyle = '#8b8fa830';
+      nlCtx.lineWidth = 1;
+      nlCtx.setLineDash([3, 3]);
+      nlCtx.beginPath();
+      nlCtx.moveTo(px, H - pad.b);
+      nlCtx.lineTo(px, py);
+      nlCtx.lineTo(pad.l, py);
+      nlCtx.stroke();
+      nlCtx.setLineDash([]);
+
+      // dot
+      nlCtx.beginPath();
+      nlCtx.arc(px, py, 4, 0, Math.PI * 2);
+      nlCtx.fillStyle = '#34d399';
+      nlCtx.fill();
+
+      // label
+      const labelY = loss > 4 ? py + 16 : py - 10;
+      nlCtx.font = '11px -apple-system, sans-serif';
+      nlCtx.fillStyle = '#e4e6f0';
+      nlCtx.textAlign = 'center';
+      nlCtx.fillText(`${kp.desc}: ${loss.toFixed(1)}`, px + (kp.p < 0.15 ? 30 : 0), labelY);
+    });
+
+    // hover crosshair
+    if (hoverX !== null) {
+      const p = Math.max(0.005, Math.min(1, (hoverX - pad.l) / aW));
+      const loss = negLog(p);
+      const px = pToX(p);
+      const py = lossToY(Math.min(loss, yMax));
+
+      // vertical line
+      nlCtx.strokeStyle = '#fbbf2460';
+      nlCtx.lineWidth = 1;
+      nlCtx.setLineDash([4, 4]);
+      nlCtx.beginPath();
+      nlCtx.moveTo(px, pad.t);
+      nlCtx.lineTo(px, H - pad.b);
+      nlCtx.stroke();
+      nlCtx.setLineDash([]);
+
+      // highlight dot
+      nlCtx.beginPath();
+      nlCtx.arc(px, py, 6, 0, Math.PI * 2);
+      nlCtx.fillStyle = '#fbbf24';
+      nlCtx.fill();
+      nlCtx.strokeStyle = '#fff';
+      nlCtx.lineWidth = 2;
+      nlCtx.stroke();
+
+      // tooltip
+      const tooltipText = `p = ${p.toFixed(3)}  →  loss = ${loss > yMax ? '>' + yMax : loss.toFixed(3)}`;
+      nlCtx.font = 'bold 12px -apple-system, sans-serif';
+      const tw = nlCtx.measureText(tooltipText).width + 16;
+      let tx = px - tw / 2;
+      if (tx < pad.l) tx = pad.l;
+      if (tx + tw > W - pad.r) tx = W - pad.r - tw;
+      const ty = Math.max(pad.t + 5, py - 30);
+
+      nlCtx.fillStyle = '#242836ee';
+      nlCtx.beginPath();
+      nlCtx.roundRect(tx, ty, tw, 22, 6);
+      nlCtx.fill();
+
+      nlCtx.fillStyle = '#fbbf24';
+      nlCtx.textAlign = 'left';
+      nlCtx.fillText(tooltipText, tx + 8, ty + 16);
+    }
+  }
+
+  nlCanvas.addEventListener('mousemove', function(e) {
+    const rect = nlCanvas.getBoundingClientRect();
+    hoverX = (e.clientX - rect.left) * (nlCanvas.width / rect.width);
+    drawNegLog();
+  });
+
+  nlCanvas.addEventListener('mouseleave', function() {
+    hoverX = null;
+    drawNegLog();
+  });
+
+  drawNegLog();
+})();
+
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => { o.disabled = true; o.style.pointerEvents = 'none'; o.style.opacity = '0.5'; });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(quizId + (isCorrect ? '-correct' : '-wrong')).classList.add('show');
+}
+</script>
+</body>
+</html>

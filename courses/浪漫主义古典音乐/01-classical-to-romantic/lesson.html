@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一课：从古典到浪漫 — 一场美学革命</title>
+<style>
+  :root {
+    --bg: #faf9f5;
+    --surface: #ffffff;
+    --surface2: #f3f1ec;
+    --border: #e5e2db;
+    --text: #1a1a1a;
+    --text-dim: #6b6560;
+    --accent: #b45a3c;
+    --accent2: #8b6d5c;
+    --green: #2d8659;
+    --red: #c0392b;
+    --orange: #c27a3c;
+    --purple: #7b5ea7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* ---- Hero ---- */
+  .hero {
+    min-height: 50vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 80px 24px 50px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #f0ebe3 0%, var(--bg) 100%);
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(180,90,60,0.08) 0%, transparent 70%);
+  }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(180,90,60,0.12);
+    color: var(--accent);
+    padding: 6px 18px; border-radius: 20px;
+    font-size: 14px; font-weight: 600;
+    margin-bottom: 20px;
+    position: relative;
+    letter-spacing: 0.5px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 46px); font-weight: 800;
+    position: relative;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+    line-height: 1.3;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero .subtitle {
+    font-size: 18px; color: var(--text-dim);
+    max-width: 600px; margin-top: 16px; position: relative;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+    font-style: italic;
+  }
+
+  /* ---- Sections ---- */
+  .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 56px 0; }
+  section h2 {
+    font-size: 26px; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #fff; font-size: 16px; font-weight: 700;
+    flex-shrink: 0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  p { margin-bottom: 16px; font-size: 16px; }
+  .highlight { color: var(--accent); font-weight: 600; }
+  .highlight-green { color: var(--green); font-weight: 600; }
+  .highlight-purple { color: var(--purple); font-weight: 600; }
+
+  /* ---- Story Card ---- */
+  .story-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin: 24px 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .story-card::before {
+    content: '🎵';
+    position: absolute; top: -10px; right: -10px;
+    font-size: 80px; opacity: 0.05;
+  }
+  .story-card h3 {
+    font-size: 19px; margin-bottom: 12px; color: var(--accent);
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+
+  /* ---- Insight Box ---- */
+  .insight-box {
+    background: rgba(180,90,60,0.06);
+    border: 1px solid rgba(180,90,60,0.15);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .insight-box .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .insight-box p { margin: 0; }
+
+  /* ---- Blockquote ---- */
+  .blockquote {
+    border-left: 3px solid var(--accent2);
+    padding: 16px 20px;
+    margin: 20px 0;
+    background: var(--surface2);
+    border-radius: 0 10px 10px 0;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .blockquote p { margin-bottom: 8px; }
+  .blockquote p:last-child { margin-bottom: 0; }
+  .blockquote cite {
+    display: block; margin-top: 8px;
+    font-size: 13px; font-style: normal; color: var(--accent2);
+  }
+
+  /* ---- Compare Grid ---- */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .compare-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .compare-box:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .compare-box h4 {
+    font-size: 17px; margin-bottom: 6px;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  .compare-box .era-tag {
+    display: inline-block;
+    padding: 3px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .era-classical { background: rgba(123,94,167,0.12); color: var(--purple); }
+  .era-romantic { background: rgba(180,90,60,0.12); color: var(--accent); }
+
+  /* ---- Timeline ---- */
+  .timeline {
+    position: relative;
+    margin: 32px 0;
+    padding-left: 36px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 14px; top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--purple), var(--accent), var(--accent));
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 28px;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .timeline-item:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    transform: translateX(4px);
+  }
+  .timeline-item.active {
+    border-color: var(--accent);
+    background: rgba(180,90,60,0.03);
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -29px; top: 22px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    z-index: 1;
+  }
+  .timeline-item .year {
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .timeline-item h4 {
+    font-size: 16px; margin-bottom: 6px;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  .timeline-item .detail {
+    font-size: 14px; color: var(--text-dim);
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.4s ease, margin 0.3s;
+  }
+  .timeline-item.active .detail {
+    max-height: 300px;
+    margin-top: 8px;
+  }
+
+  /* ---- A/B Comparison ---- */
+  .ab-compare {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 24px 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .ab-header {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .ab-header button {
+    padding: 14px; border: none; background: none;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.3s;
+    color: var(--text-dim);
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  .ab-header button.active {
+    color: var(--accent);
+    background: rgba(180,90,60,0.06);
+    box-shadow: inset 0 -3px 0 var(--accent);
+  }
+  .ab-content {
+    padding: 24px 28px;
+  }
+  .ab-panel { display: none; }
+  .ab-panel.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .ab-panel .trait-list {
+    display: flex; flex-direction: column; gap: 12px;
+    margin: 16px 0;
+  }
+  .trait-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: 10px;
+  }
+  .trait-item .trait-icon { font-size: 20px; flex-shrink: 0; }
+  .trait-item .trait-label { font-size: 13px; color: var(--text-dim); }
+  .trait-item .trait-value { font-size: 15px; font-weight: 500; }
+
+  /* ---- Method Cards ---- */
+  .method-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin: 24px 0;
+  }
+  .method-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .method-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  }
+  .method-card .card-emoji { font-size: 32px; margin-bottom: 8px; }
+  .method-card h4 { font-size: 15px; margin-bottom: 6px; }
+  .method-card p { font-size: 13px; color: var(--text-dim); margin: 0; }
+
+  /* ---- Quiz ---- */
+  .quiz {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin: 24px 0;
+  }
+  .quiz h3 {
+    font-size: 17px; margin-bottom: 16px;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text); font-size: 15px;
+    cursor: pointer; margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: rgba(180,90,60,0.04); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(45,134,89,0.08); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(192,57,43,0.08); }
+  .quiz-feedback {
+    margin-top: 12px; padding: 12px 16px;
+    border-radius: 8px; font-size: 14px;
+    display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct-fb { background: rgba(45,134,89,0.08); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(192,57,43,0.08); color: var(--red); }
+
+  /* ---- Further Reading ---- */
+  .further-reading { padding: 40px 0; }
+  .reading-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .reading-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px;
+  }
+  .reading-title a {
+    color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px;
+  }
+  .reading-title a:hover { text-decoration: underline; }
+  .reading-meta { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .reading-desc { font-size: 14px; color: var(--text-dim); margin-top: 6px; }
+
+  .further-reading-inline {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: var(--surface2); border-radius: 8px;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  .further-reading-inline .fr-icon { flex-shrink: 0; }
+  .further-reading-inline a { color: var(--accent); font-weight: 600; }
+
+  /* ---- Lesson Nav ---- */
+  .lesson-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 40px 0 60px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+  .lesson-nav a {
+    color: var(--accent); text-decoration: none;
+    font-weight: 600; font-size: 15px;
+  }
+  .lesson-nav a:hover { text-decoration: underline; }
+
+  /* ---- Listen Card ---- */
+  .listen-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 24px 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .listen-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .listen-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff;
+    flex-shrink: 0;
+  }
+  .listen-meta { flex: 1; }
+  .listen-meta .listen-title {
+    font-size: 15px; font-weight: 600;
+    font-family: 'Georgia', 'Noto Serif SC', serif;
+  }
+  .listen-meta .listen-subtitle {
+    font-size: 13px; color: var(--text-dim); margin-top: 2px;
+  }
+  .listen-body { padding: 16px 20px; }
+  .listen-body p { font-size: 14px; color: var(--text-dim); margin-bottom: 12px; }
+  .listen-body p:last-child { margin-bottom: 0; }
+  .listen-guide {
+    font-size: 13px; color: var(--accent2);
+    background: rgba(180,90,60,0.05);
+    border-radius: 8px; padding: 10px 14px;
+    margin-top: 12px;
+  }
+  .listen-guide strong { color: var(--accent); }
+  .listen-player {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #1a1a1a;
+    cursor: pointer;
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+    text-decoration: none;
+  }
+  .listen-player img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0.75;
+    transition: opacity 0.3s, transform 0.4s;
+  }
+  .listen-player:hover img {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+  .listen-player .play-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px;
+    color: #fff;
+    z-index: 1;
+  }
+  .listen-player .play-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: rgba(180,90,60,0.92);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .listen-player:hover .play-btn {
+    transform: scale(1.1);
+    background: var(--accent);
+  }
+  .listen-player .play-label {
+    font-size: 13px; opacity: 0.8;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 600px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    .ab-header { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== HERO ========== -->
+<div class="hero">
+  <div class="badge">第一课 · 浪漫主义古典音乐</div>
+  <h1>从古典到浪漫<br><span>一场美学革命</span></h1>
+  <p class="subtitle">当音乐不再只是上帝与贵族的语言，而成为每一个灵魂的独白</p>
+</div>
+
+<div class="container">
+
+<!-- ========== 1. 故事引入 ========== -->
+<section>
+  <h2><span class="num">1</span> 一个时代的转折点</h2>
+
+  <p>1824 年 5 月 7 日，维也纳。一个几乎完全失聪的男人站在舞台上，背对着观众，指挥着他生命中最后一部交响曲的首演。当最后一个音符落下，雷鸣般的掌声爆发——但他什么也听不到。直到一位女歌手轻轻拉着他转过身来，他才看到全场观众起立、热泪盈眶、挥舞帽子。</p>
+
+  <p>这个人是<span class="highlight">路德维希·凡·贝多芬</span>。这部作品是<span class="highlight">第九交响曲"合唱"</span>。</p>
+
+  <p>这一幕不仅是音乐史上最动人的瞬间之一，也是一个时代转折的象征。贝多芬的《第九交响曲》打破了交响曲的一切既有规则：它在纯器乐交响曲中加入了人声，把席勒的诗歌《欢乐颂》变成了音乐的一部分。它不再是为宫廷或教堂写的"功能性"音乐，而是一个人对全人类的精神宣言——<span class="highlight-purple">"四海之内皆兄弟"</span>。</p>
+
+  <p>这种将个人情感、哲学理想和戏剧性冲突注入音乐的冲动，正是<span class="highlight">浪漫主义</span>的核心精神。从贝多芬开始，音乐家们不再满足于做贵族的仆人和礼仪的点缀，他们要成为"艺术家"——用音乐表达自我、挑战传统、感动世界。</p>
+
+  <div class="listen-card">
+    <div class="listen-header">
+      <div class="listen-icon">♫</div>
+      <div class="listen-meta">
+        <div class="listen-title">贝多芬：第九交响曲 第四乐章「欢乐颂」</div>
+        <div class="listen-subtitle">Beethoven: Symphony No. 9, Op. 125 — IV. Presto · 芝加哥交响乐团 / Riccardo Muti 指挥</div>
+      </div>
+    </div>
+    <div class="listen-body">
+      <p>这就是我们刚才故事中的那部作品。注意第四乐章开头的"混乱"——贝多芬故意回顾并否定了前三个乐章的主题，仿佛在说"这些都不够"，直到低音提琴奏出那个全世界最著名的旋律。</p>
+      <div class="listen-guide">
+        <strong>聆听提示：</strong>留意 0:49:25 左右大提琴和低音提琴首次奏出「欢乐颂」主题的那一刻——从独奏到合奏到人声加入的过程，就是从"个人"到"人类全体"的精神升华。
+      </div>
+    </div>
+    <a class="listen-player" href="https://www.youtube.com/watch?v=rOjHhS5MtvA&t=2940s" target="_blank" rel="noopener">
+      <img src="https://img.youtube.com/vi/rOjHhS5MtvA/hqdefault.jpg" alt="Beethoven Symphony No.9">
+      <div class="play-overlay">
+        <div class="play-btn">▶</div>
+        <div class="play-label">在 YouTube 中播放</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="insight-box">
+    <span class="icon">🎯</span>
+    <p><strong>本课目标：</strong>理解古典主义和浪漫主义在音乐美学上的根本差异，了解推动这场变革的历史力量，以及为什么"浪漫主义"不等于"浪漫的音乐"。这些认知将成为你理解后续所有课程的基础框架。</p>
+  </div>
+</section>
+
+<!-- ========== 2. 历史背景 ========== -->
+<section>
+  <h2><span class="num">2</span> 什么催生了浪漫主义？</h2>
+
+  <p>音乐不会凭空变革。浪漫主义音乐的诞生，离不开 18 世纪末到 19 世纪初欧洲社会的剧烈变动。要理解为什么音乐从海顿、莫扎特的优雅均衡走向贝多芬、舒伯特的激情奔涌，我们需要先看一看那个时代发生了什么。</p>
+
+  <p>下面的时间轴梳理了几个关键事件。<strong>点击每一项展开细节</strong>，感受历史的力量如何一步步改变了音乐的面貌：</p>
+
+  <div class="timeline" id="timeline">
+    <div class="timeline-item active" data-idx="0">
+      <div class="year">1789</div>
+      <h4>法国大革命</h4>
+      <div class="detail">
+        <p>"自由、平等、博爱"不只是政治口号——它彻底动摇了欧洲的等级秩序。在旧制度下，作曲家是贵族的雇员（海顿为埃斯特哈齐亲王工作了 30 年）；革命后，"人人生而平等"的理念让艺术家开始追求独立身份。贝多芬原本将第三交响曲献给拿破仑，得知其称帝后愤怒地撕去了题词——这种"艺术家的骄傲"在海顿时代是不可想象的。</p>
+      </div>
+    </div>
+    <div class="timeline-item" data-idx="1">
+      <div class="year">约 1760–1840</div>
+      <h4>工业革命与城市化</h4>
+      <div class="detail">
+        <p>工业革命催生了一个庞大的城市中产阶级。他们有钱购买钢琴（19 世纪钢琴产量暴增）、有闲暇去音乐厅、有欲望通过文化消费彰显品味。音乐的消费者从少数贵族扩展到了数以万计的市民。这直接推动了公共音乐会制度的兴起——作曲家不再需要依附于宫廷，可以通过门票收入、出版乐谱和私人教学维持生计。钢琴制造技术的进步（铁框架、交叉弦列、延音踏板）也让乐器的音量和表现力大幅增强，为肖邦、李斯特的炫技奠定了物质基础。</p>
+      </div>
+    </div>
+    <div class="timeline-item" data-idx="2">
+      <div class="year">约 1770–1830</div>
+      <h4>文学中的浪漫主义运动</h4>
+      <div class="detail">
+        <p>音乐上的浪漫主义并非孤立现象——它是更大的文化运动的一部分。歌德的《少年维特的烦恼》(1774) 掀起了"狂飙突进"运动，雪莱、拜伦、济慈等人在英国开创浪漫主义诗歌，诺瓦利斯和霍夫曼在德国发展了浪漫主义哲学。这些文学家强调的核心价值——个人情感、大自然的崇高、对无限的渴望、对中世纪和民间传说的迷恋——直接成为了浪漫主义音乐的精神养分。舒伯特为歌德的诗谱曲（如《魔王》），舒曼沉浸在霍夫曼的奇幻小说中，柏辽兹受拜伦启发写出《哈罗尔德在意大利》。</p>
+      </div>
+    </div>
+    <div class="timeline-item" data-idx="3">
+      <div class="year">1800–1830</div>
+      <h4>贝多芬的"英雄"转向</h4>
+      <div class="detail">
+        <p>如果说社会变革是土壤，贝多芬就是第一棵破土的大树。他的"中期"作品（第三至第八交响曲、"热情"奏鸣曲等）展现了前所未有的情感强度和戏剧性。他证明了音乐可以是"个人叙事"——第五交响曲的"命运敲门"动机、第六交响曲的田园画面、第九交响曲对人类大同的歌颂。他不仅改变了音乐的内容，也改变了作曲家的社会角色：从"工匠"变成了"天才"，从"服务者"变成了"先知"。</p>
+      </div>
+    </div>
+    <div class="timeline-item" data-idx="4">
+      <div class="year">约 1815–1848</div>
+      <h4>浪漫主义音乐的全面开花</h4>
+      <div class="detail">
+        <p>贝多芬之后，浪漫主义在各个方向开花：舒伯特创造了艺术歌曲的黄金时代，韦伯的《自由射手》开创了德国浪漫主义歌剧，门德尔松复兴了巴赫并推动了音乐的公共教育，肖邦和李斯特把钢琴独奏提升为艺术的巅峰形式，柏辽兹的《幻想交响曲》开创了标题交响曲的先河。到 1830 年代，浪漫主义已不再是"新思潮"，而是欧洲音乐的主流语言。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. 古典 vs 浪漫 ========== -->
+<section>
+  <h2><span class="num">3</span> 古典主义 vs 浪漫主义：风格深度对比</h2>
+
+  <p>现在你已经了解了浪漫主义兴起的历史背景。但"古典的"和"浪漫的"音乐到底听起来有什么不同？感受上有什么差异？背后的美学理念有何分歧？</p>
+
+  <p>这不是一条清晰的分界线——两个时代之间有大量的过渡和重叠（贝多芬本人就横跨两个时代）。但总体而言，我们可以从以下几个维度来理解它们的核心差异。<strong>点击标签切换</strong>，对比同一个维度在两种美学中的不同表现：</p>
+
+  <div class="ab-compare" id="ab-compare">
+    <div class="ab-header">
+      <button class="active" data-panel="classical">🏛️ 古典主义（~1750–1820）</button>
+      <button data-panel="romantic">🌹 浪漫主义（~1820–1910）</button>
+    </div>
+    <div class="ab-content">
+      <div class="ab-panel active" id="panel-classical">
+        <p style="color:var(--text-dim);font-size:14px;margin-bottom:16px">代表人物：海顿、莫扎特、早期贝多芬</p>
+        <div class="trait-list">
+          <div class="trait-item">
+            <span class="trait-icon">🎯</span>
+            <div>
+              <div class="trait-label">核心美学</div>
+              <div class="trait-value">均衡、秩序、理性、克制</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🏗️</span>
+            <div>
+              <div class="trait-label">曲式结构</div>
+              <div class="trait-value">严格对称：呈示部 → 发展部 → 再现部；乐章数量固定（通常 4 个）</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎨</span>
+            <div>
+              <div class="trait-label">旋律特征</div>
+              <div class="trait-value">方整乐句（4+4 小节）、优雅清晰、装饰但不夸张</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎹</span>
+            <div>
+              <div class="trait-label">和声语言</div>
+              <div class="trait-value">以大小调体系为核心，调性清晰，转调有规律（通常转到属调或平行调）</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎺</span>
+            <div>
+              <div class="trait-label">乐队编制</div>
+              <div class="trait-value">室内规模管弦乐队（~30–40 人），木管配对使用</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">💼</span>
+            <div>
+              <div class="trait-label">作曲家身份</div>
+              <div class="trait-value">宫廷或教会雇员，服务于赞助人的需求</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ab-panel" id="panel-romantic">
+        <p style="color:var(--text-dim);font-size:14px;margin-bottom:16px">代表人物：中晚期贝多芬、肖邦、李斯特、瓦格纳、马勒</p>
+        <div class="trait-list">
+          <div class="trait-item">
+            <span class="trait-icon">🔥</span>
+            <div>
+              <div class="trait-label">核心美学</div>
+              <div class="trait-value">激情、自由、个人表达、对"无限"的渴望</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🌊</span>
+            <div>
+              <div class="trait-label">曲式结构</div>
+              <div class="trait-value">自由扩展或打破传统曲式；出现新体裁（交响诗、夜曲、叙事曲等）；乐章数量不固定</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎨</span>
+            <div>
+              <div class="trait-label">旋律特征</div>
+              <div class="trait-value">悠长如歌的旋律线，情感起伏大，不拘于方整结构</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎹</span>
+            <div>
+              <div class="trait-label">和声语言</div>
+              <div class="trait-value">大量使用半音和声、远关系转调、不协和和弦延迟解决，调性边界越来越模糊</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🎺</span>
+            <div>
+              <div class="trait-label">乐队编制</div>
+              <div class="trait-value">大型交响乐队（80–100+ 人），加入新乐器（竖琴、英国管、低音单簧管等）</div>
+            </div>
+          </div>
+          <div class="trait-item">
+            <span class="trait-icon">🌟</span>
+            <div>
+              <div class="trait-label">作曲家身份</div>
+              <div class="trait-value">独立艺术家、"天才"和"先知"，对公众和自我负责</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p>用一句话总结这个对比：<span class="highlight">古典主义追求的是"美"，浪漫主义追求的是"真"</span>。古典主义的美是阿波罗式的——光明、秩序、和谐；浪漫主义的美是狄俄尼索斯式的——狂热、深邃、不可遏制。</p>
+
+  <p>光看文字描述可能还是抽象的。最好的方式是<strong>用耳朵来感受</strong>这个差异。下面两段音乐分别代表古典主义和浪漫主义的典型声音——注意对比它们在旋律线条、情感密度和声音"质感"上的区别：</p>
+
+  <div class="listen-card">
+    <div class="listen-header">
+      <div class="listen-icon">🏛️</div>
+      <div class="listen-meta">
+        <div class="listen-title">【古典主义】莫扎特：小夜曲 第一乐章</div>
+        <div class="listen-subtitle">Mozart: Eine kleine Nachtmusik, K.525 — I. Allegro · 圣马丁室内乐团 / Neville Marriner</div>
+      </div>
+    </div>
+    <div class="listen-body">
+      <p>这可能是世界上最著名的古典主义作品之一。注意它的旋律有多么方整清晰——每个乐句都像精心雕琢的对称花园，没有一个多余的音符。情感是愉悦的、明亮的，但始终"有分寸"。</p>
+      <div class="listen-guide">
+        <strong>聆听提示：</strong>感受乐句的"问答"结构——前 4 小节像是"提问"，后 4 小节是"回答"，非常均衡对称。这就是古典主义的核心美学：秩序中的优美。
+      </div>
+    </div>
+    <a class="listen-player" href="https://www.youtube.com/watch?v=UhPBT0dA_oA" target="_blank" rel="noopener">
+      <img src="https://img.youtube.com/vi/UhPBT0dA_oA/hqdefault.jpg" alt="Mozart Eine kleine Nachtmusik">
+      <div class="play-overlay">
+        <div class="play-btn">▶</div>
+        <div class="play-label">在 YouTube 中播放</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="listen-card">
+    <div class="listen-header">
+      <div class="listen-icon">🌹</div>
+      <div class="listen-meta">
+        <div class="listen-title">【浪漫主义】肖邦：g 小调第一叙事曲</div>
+        <div class="listen-subtitle">Chopin: Ballade No. 1 in G minor, Op. 23 · 赵成珍 (Seong-Jin Cho) / DG</div>
+      </div>
+    </div>
+    <div class="listen-body">
+      <p>再听这首。和莫扎特的清澈完全不同——肖邦的旋律像一条蜿蜒的河流，充满了细腻的情感转折。从开头的沉思到中段的激烈再到结尾的狂风暴雨般冲刺，整首曲子就像一个人内心的完整叙事。</p>
+      <div class="listen-guide">
+        <strong>聆听提示：</strong>注意 1:30 左右第一主题出现时的旋律——它悠长、如歌、充满渴望，不受"4+4 小节"的束缚自由舒展。再注意 7:30 之后的 coda（尾声）——暴风雨般的激情宣泄，这在莫扎特的世界里是不可想象的。
+      </div>
+    </div>
+    <a class="listen-player" href="https://www.youtube.com/watch?v=taY5oHleS4I" target="_blank" rel="noopener">
+      <img src="https://img.youtube.com/vi/taY5oHleS4I/hqdefault.jpg" alt="Chopin Ballade No.1">
+      <div class="play-overlay">
+        <div class="play-btn">▶</div>
+        <div class="play-label">在 YouTube 中播放</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="insight-box">
+    <span class="icon">⚠️</span>
+    <p><strong>常见误解：</strong>"浪漫主义" ≠ "浪漫的"。这里的 Romantic 来自中世纪的 "romance"（传奇故事），指的是一种强调想象力、情感和个体精神的文化运动——它可以是温柔的（肖邦夜曲），也可以是暴烈的（贝多芬"暴风雨"奏鸣曲），或是恐怖的（柏辽兹"幻想交响曲"的断头台行进曲），甚至是哲学的（瓦格纳的"特里斯坦与伊索尔德"）。把它理解为"感情充沛"比"浪漫"更准确。</p>
+  </div>
+</section>
+
+<!-- ========== 4. 浪漫主义的核心美学 ========== -->
+<section>
+  <h2><span class="num">4</span> 浪漫主义音乐的六个关键词</h2>
+
+  <p>浪漫主义不是一个统一的"流派"，而是一团由多种理念交织而成的火焰。不同的作曲家可能强调不同的面向，但以下六个关键词几乎贯穿了整个浪漫主义时期：</p>
+
+  <div class="method-cards">
+    <div class="method-card">
+      <div class="card-emoji">💫</div>
+      <h4>Sehnsucht 渴望</h4>
+      <p>一种对远方、对无法触及之物的永恒渴望。德语 Sehnsucht 几乎无法翻译——它是浪漫主义的情感底色。</p>
+    </div>
+    <div class="method-card">
+      <div class="card-emoji">🌲</div>
+      <h4>Natur 自然</h4>
+      <p>不是田园牧歌，而是崇高壮美的大自然——暴风雨、深林、大海。人在自然面前的渺小感恰恰唤醒了内心的无限。</p>
+    </div>
+    <div class="method-card">
+      <div class="card-emoji">👤</div>
+      <h4>Ich 自我</h4>
+      <p>音乐成为作曲家的精神自传。舒曼在钢琴曲中塑造了自己的双重人格（佛罗伦斯坦与尤瑟比乌斯），柏辽兹在交响曲中上演自己的恋爱悲剧。</p>
+    </div>
+    <div class="method-card">
+      <div class="card-emoji">📖</div>
+      <h4>Poesie 诗意</h4>
+      <p>音乐与文学深度融合。艺术歌曲把诗变成音乐，交响诗把叙事变成管弦乐，歌剧把戏剧变成整体艺术品。</p>
+    </div>
+    <div class="method-card">
+      <div class="card-emoji">🏰</div>
+      <h4>Volkstum 民族性</h4>
+      <p>作曲家从本民族的民歌、舞曲、传说中汲取灵感，用音乐书写国家认同。这催生了 19 世纪下半叶的民族乐派。</p>
+    </div>
+    <div class="method-card">
+      <div class="card-emoji">♾️</div>
+      <h4>Unendlichkeit 无限</h4>
+      <p>追求超越形式限制的艺术。作品越写越长，和声越来越复杂，直到瓦格纳的"无终旋律"和马勒长达 90 分钟的交响曲。</p>
+    </div>
+  </div>
+
+  <p>这六个关键词不是互相独立的，而是彼此交织。比如，肖邦的夜曲同时体现了"渴望"和"诗意"；柴可夫斯基的交响曲同时体现了"自我"和"民族性"；瓦格纳的乐剧则试图把所有六个关键词熔为一炉。</p>
+
+  <div class="further-reading-inline">
+    <span class="fr-icon">📖</span>
+    <span>想深入理解 Sehnsucht 这个概念？→ <a href="https://en.wikipedia.org/wiki/Sehnsucht" target="_blank" rel="noopener">Wikipedia: Sehnsucht</a>（英文，对这个"不可翻译"的德语词有详细的文化和哲学解读）</span>
+  </div>
+</section>
+
+<!-- ========== 5. "浪漫"不等于一种声音 ========== -->
+<section>
+  <h2><span class="num">5</span> "浪漫主义"不是一种声音</h2>
+
+  <p>理解浪漫主义音乐时，最重要的一个认知可能是：<span class="highlight">它不是一种统一的"风格"，而是一种"态度"</span>。</p>
+
+  <p>古典主义相对容易定义——海顿和莫扎特的音乐在技法和审美上有高度的一致性。但浪漫主义从一开始就是多元的、甚至是矛盾的。看看这些令人困惑的对比：</p>
+
+  <div class="compare-grid">
+    <div class="compare-box">
+      <h4>肖邦</h4>
+      <span class="era-tag era-romantic">浪漫主义</span>
+      <p style="font-size:14px;color:var(--text-dim)">只写钢琴曲，从不写交响乐或歌剧。作品短小精致，像诗歌。极度克制的表演风格，反对夸张。</p>
+    </div>
+    <div class="compare-box">
+      <h4>瓦格纳</h4>
+      <span class="era-tag era-romantic">浪漫主义</span>
+      <p style="font-size:14px;color:var(--text-dim)">写长达 16 小时的四联剧歌剧，动用百人乐队加合唱团。追求"总体艺术品"，把所有艺术形式熔为一炉。</p>
+    </div>
+  </div>
+
+  <div class="compare-grid">
+    <div class="compare-box">
+      <h4>勃拉姆斯</h4>
+      <span class="era-tag era-romantic">浪漫主义</span>
+      <p style="font-size:14px;color:var(--text-dim)">崇拜古典形式，坚持用奏鸣曲式和交响曲体裁。被称为"古典主义的最后守护者"。</p>
+    </div>
+    <div class="compare-box">
+      <h4>李斯特</h4>
+      <span class="era-tag era-romantic">浪漫主义</span>
+      <p style="font-size:14px;color:var(--text-dim)">发明了"交响诗"——一种自由形式的单乐章管弦乐曲。公然反对传统曲式的束缚。</p>
+    </div>
+  </div>
+
+  <p>肖邦和瓦格纳、勃拉姆斯和李斯特，他们在技法上天差地别，却都是"浪漫主义者"。这是因为浪漫主义的本质不在于你用了什么技法，而在于你为什么写音乐——<span class="highlight">是为了遵循规则，还是为了表达内心？</span></p>
+
+  <p>事实上，19 世纪的音乐界确实因为这种内部分歧爆发过激烈的论战。历史上称之为<span class="highlight-purple">"新德意志学派之争"（War of the Romantics）</span>：</p>
+
+  <div class="story-card">
+    <h3>🗡️ 19 世纪的"音乐内战"</h3>
+    <p><strong>一方是"未来派"：</strong>李斯特和瓦格纳为首。他们认为音乐必须不断革新，传统的奏鸣曲式和交响曲体裁已经过时，音乐应该和诗歌、戏剧、哲学融合，创造出全新的艺术形式。</p>
+    <p><strong>另一方是"保守派"：</strong>勃拉姆斯和汉斯利克为首。他们认为音乐的价值在于"纯粹的音乐美"——也就是旋律、和声、对位本身的逻辑之美，不需要外在的文学叙事或哲学宣言来赋予意义。</p>
+    <p>这场争论持续了几十年，双方各有大批支持者，彼此在音乐杂志上激烈论战。有趣的是，两派的音乐在今天都被视为浪漫主义的杰作——历史证明，双方都没有"错"，只是浪漫主义这把火在不同方向燃烧。</p>
+  </div>
+</section>
+
+<!-- ========== 6. 浪漫主义的分期 ========== -->
+<section>
+  <h2><span class="num">6</span> 浪漫主义的三个阶段</h2>
+
+  <p>虽然浪漫主义是一个连续的运动，但为了后续课程的学习方便，我们可以将它大致分为三个阶段。每个阶段的代表人物和核心特征如下——这也是本系列课程的学习路线图：</p>
+
+  <div class="compare-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="compare-box" style="border-top:3px solid var(--purple)">
+      <h4>早期浪漫主义</h4>
+      <p style="font-size:13px;color:var(--accent2);margin-bottom:8px">约 1800–1850</p>
+      <p style="font-size:14px;color:var(--text-dim)">从古典主义中"长出来"的阶段。贝多芬是桥梁，舒伯特、门德尔松、舒曼、肖邦是核心人物。特征是抒情性的强化、小型体裁（艺术歌曲、钢琴小品）的繁荣，以及对自然和内心世界的诗意探索。</p>
+    </div>
+    <div class="compare-box" style="border-top:3px solid var(--accent)">
+      <h4>盛期浪漫主义</h4>
+      <p style="font-size:13px;color:var(--accent2);margin-bottom:8px">约 1850–1890</p>
+      <p style="font-size:14px;color:var(--text-dim)">浪漫主义的"大时代"。李斯特和瓦格纳推动音乐向宏大方向发展，勃拉姆斯坚守传统阵地，民族乐派在东欧和北欧兴起。管弦乐队规模急剧膨胀，歌剧和交响曲的篇幅都在增长。</p>
+    </div>
+    <div class="compare-box" style="border-top:3px solid var(--orange)">
+      <h4>晚期浪漫主义</h4>
+      <p style="font-size:13px;color:var(--accent2);margin-bottom:8px">约 1890–1910</p>
+      <p style="font-size:14px;color:var(--text-dim)">达到极致，同时走向解体。马勒的交响曲动辄 80 分钟，理查·施特劳斯的管弦乐色彩登峰造极，拉赫玛尼诺夫的旋律成为"最后的歌唱"。调性在瓦格纳的"特里斯坦和弦"后越来越不稳定，最终在勋伯格手中彻底崩塌——现代主义由此萌芽。</p>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <span class="icon">🗺️</span>
+    <p><strong>课程导航：</strong>接下来的七课将沿着这条时间线展开：第 2 课深入贝多芬（桥梁人物），第 3–4 课探索早期浪漫主义的钢琴和歌曲，第 5–7 课进入盛期浪漫主义的交响曲、歌剧和民族乐派，第 8 课在晚期浪漫主义中收束全局。每课都会带你听一些关键作品片段，理解它们为什么在音乐史上具有转折意义。</p>
+  </div>
+</section>
+
+<!-- ========== 7. 测验 ========== -->
+<section>
+  <h2><span class="num">7</span> 检验你的理解</h2>
+  <p>回答下面的问题来检验你对本课内容的理解。</p>
+
+  <div class="quiz" id="quiz1">
+    <h3>Q1: "浪漫主义"这个词在音乐史语境中的含义是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">专指温柔、抒情的爱情音乐</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz1')">一种强调个人情感、想象力和精神自由的文化运动</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz1')">18 世纪的宫廷音乐风格</button>
+    <div class="quiz-feedback correct-fb" id="quiz1-correct">✅ 正确！Romantic 源自中世纪的 romance（传奇故事），指的是强调个人主义、情感和想象力的文化运动，远不止"浪漫"那么简单。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz1-wrong">❌ 再想想。提示：回顾第 3 节关于"常见误解"的段落。</div>
+  </div>
+
+  <div class="quiz" id="quiz2">
+    <h3>Q2: 以下哪个历史事件对浪漫主义音乐的兴起影响最直接？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">文艺复兴</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz2')">法国大革命和工业革命</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz2')">第一次世界大战</button>
+    <div class="quiz-feedback correct-fb" id="quiz2-correct">✅ 正确！法国大革命动摇了贵族等级秩序，让艺术家追求独立身份；工业革命催生了中产阶级音乐市场和钢琴制造技术革新。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz2-wrong">❌ 注意时间线。浪漫主义大约从 1800 年开始，想想那个年代欧洲最重大的社会变革是什么。</div>
+  </div>
+
+  <div class="quiz" id="quiz3">
+    <h3>Q3: 古典主义和浪漫主义在音乐结构上的核心区别是？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">古典主义不使用管弦乐队</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz3')">浪漫主义完全抛弃了调性</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz3')">古典主义追求均衡对称的形式，浪漫主义倾向于自由扩展和突破传统曲式</button>
+    <div class="quiz-feedback correct-fb" id="quiz3-correct">✅ 正确！古典主义以严格的奏鸣曲式为核心框架，追求对称均衡；浪漫主义则不断扩展、变形甚至打破传统曲式，发明了交响诗、叙事曲等新体裁。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz3-wrong">❌ 回顾第 3 节的对比。提示：浪漫主义虽然在推动调性边界，但并没有"完全抛弃"调性——那是 20 世纪现代主义的事。</div>
+  </div>
+
+  <div class="quiz" id="quiz4">
+    <h3>Q4: 勃拉姆斯和李斯特都是浪漫主义作曲家，但他们在哪个问题上激烈对立？</h3>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">是否应该使用钢琴</button>
+    <button class="quiz-option" data-correct="true" onclick="checkQuiz(this,'quiz4')">音乐是否应该保持传统形式，还是应该和文学/哲学融合创造新形式</button>
+    <button class="quiz-option" data-correct="false" onclick="checkQuiz(this,'quiz4')">是否应该在德国演出</button>
+    <div class="quiz-feedback correct-fb" id="quiz4-correct">✅ 正确！这就是"新德意志学派之争"——李斯特/瓦格纳主张音乐应与诗歌戏剧融合（交响诗、乐剧），勃拉姆斯/汉斯利克坚持"绝对音乐"的纯粹形式美。</div>
+    <div class="quiz-feedback wrong-fb" id="quiz4-wrong">❌ 回顾第 5 节"19 世纪的音乐内战"部分。</div>
+  </div>
+</section>
+
+<!-- ========== 延伸阅读 ========== -->
+<section class="further-reading">
+  <h2><span class="num">✦</span> 延伸阅读</h2>
+  <p>如果你想更深入地理解本课涉及的概念，以下是一些优质资料：</p>
+  <div class="reading-list" id="reading-list">
+    <div class="reading-item">
+      <div class="reading-title">
+        <a href="https://www.icourse163.org/course/PKU-1002533001" target="_blank" rel="noopener">浪漫主义时代的欧洲音乐 — 北京大学 MOOC</a>
+      </div>
+      <div class="reading-meta">中国大学 MOOC · 免费公开课</div>
+      <div class="reading-desc">北大开设的浪漫主义音乐通识课，以文化现象为中心，不需要专业乐理基础，非常适合本课程的受众进阶学习。</div>
+    </div>
+    <div class="reading-item">
+      <div class="reading-title">
+        <a href="https://www.classical-music.com/articles/romantic-music" target="_blank" rel="noopener">Romantic music: the era that changed classical forever</a>
+      </div>
+      <div class="reading-meta">BBC Classical Music Magazine · 综述文章</div>
+      <div class="reading-desc">BBC 古典音乐杂志的浪漫主义专题长文，梳理了从贝多芬到马勒的完整脉络，附有大量推荐唱片，英文但易读。</div>
+    </div>
+    <div class="reading-item">
+      <div class="reading-title">
+        <a href="https://www.gramophone.co.uk/content/features/top-10-romantic-composers" target="_blank" rel="noopener">Top 10 Romantic Composers — Gramophone</a>
+      </div>
+      <div class="reading-meta">Gramophone · 权威唱片杂志</div>
+      <div class="reading-desc">留声机杂志评选的十大浪漫主义作曲家，每位都附有简介和推荐录音，适合作为聆听的起点。</div>
+    </div>
+    <div class="reading-item">
+      <div class="reading-title">
+        <a href="https://zh.wikipedia.org/wiki/浪漫主义音乐" target="_blank" rel="noopener">浪漫主义音乐 — 维基百科</a>
+      </div>
+      <div class="reading-meta">Wikipedia · 百科词条</div>
+      <div class="reading-desc">中文维基的浪漫主义音乐条目，提供了较完整的分期、代表人物和体裁概览，适合快速查阅和深入链接。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Lesson Nav ========== -->
+<div class="lesson-nav">
+  <span style="color:var(--text-dim)">← 这是第一课</span>
+  <a href="../02-beethoven/lesson.html">下一课：贝多芬 — 跨越两个时代的巨人 →</a>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// Timeline interaction
+// ============================================================
+document.querySelectorAll('.timeline-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const wasActive = item.classList.contains('active');
+    document.querySelectorAll('.timeline-item').forEach(i => i.classList.remove('active'));
+    if (!wasActive) item.classList.add('active');
+  });
+});
+
+// ============================================================
+// A/B Compare tabs
+// ============================================================
+document.querySelectorAll('.ab-header button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ab-header button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+  });
+});
+
+// ============================================================
+// Quiz
+// ============================================================
+function checkQuiz(btn, quizId) {
+  const quiz = document.getElementById(quizId);
+  const options = quiz.querySelectorAll('.quiz-option');
+  const isCorrect = btn.dataset.correct === 'true';
+  options.forEach(o => {
+    o.disabled = true;
+    o.style.pointerEvents = 'none';
+    o.style.opacity = '0.5';
+  });
+  btn.style.opacity = '1';
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  document.getElementById(
+    quizId + (isCorrect ? '-correct' : '-wrong')
+  ).classList.add('show');
+}
+</script>
+</body>
+</html>

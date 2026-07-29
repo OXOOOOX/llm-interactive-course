@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI 产品经理实战课第 3 课：设计可理解、可控制、可恢复的 AI 体验。">
+  <title>第 3 课｜设计 AI 体验，而不只是聊天框</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+</head>
+<body data-lesson="03" style="--course-progress:50%">
+  <header class="topbar"><a class="brand" href="../index.html">AI PM 实战课</a><div class="top-meta"><span>6 课 · 约 3 小时</span></div></header>
+  <div class="mobile-progress"><div class="progress-label"><span>第 3 / 6 课</span><span>设计 AI 体验</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+  <div class="course-shell">
+    <aside class="course-sidebar" aria-label="课程目录">
+      <div class="progress-block"><div class="progress-label"><span>课程进度</span><span>3 / 6</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+      <nav class="lesson-list">
+        <a class="lesson-link" data-lesson="01" href="../01-role-and-boundary/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">01</span><span>角色与边界</span></a>
+        <a class="lesson-link" data-lesson="02" href="../02-find-the-problem/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">02</span><span>找到真问题</span></a>
+        <a class="lesson-link active" data-lesson="03" aria-current="page" href="lesson.html"><span class="lesson-dot"></span><span class="lesson-number">03</span><span>设计 AI 体验</span></a>
+        <a class="lesson-link" data-lesson="04" href="../04-evals-and-metrics/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">04</span><span>评估与指标</span></a>
+        <a class="lesson-link" data-lesson="05" href="../05-prototype-to-launch/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">05</span><span>从原型到上线</span></a>
+        <a class="lesson-link" data-lesson="06" href="../06-capstone/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">06</span><span>毕业实战</span></a>
+      </nav><a class="sidebar-map" href="../index.html">查看课程地图 →</a>
+    </aside>
+    <main class="lesson-main">
+      <article class="lesson-content">
+        <header class="lesson-hero"><h1>第 3 课｜设计 AI 体验，而不只是聊天框</h1><p>让用户知道它能做什么、为什么这样做，以及出错后下一步怎么办。</p><div class="hero-actions"><button class="btn btn-primary" data-start-challenge>开始挑战</button><button class="btn btn-secondary" data-exercise-toggle>隐藏思考练习</button></div></header>
+        <section class="learning-section"><span class="section-number">0</span><h2>快速回顾</h2><p>我们已经把机会写成可验证的问题。下一步不是立刻画聊天框，而是安排一段人机协作：输入从哪来，模型在何处介入，用户如何理解、控制、纠错和恢复。</p></section>
+        <section class="learning-section">
+          <span class="section-number">1</span><h2>AI 体验的四个时刻</h2>
+          <div class="pipeline">
+            <div class="pipeline-step"><b>开始前</b><span>说明能做什么、不能做什么，需要哪些输入。</span></div>
+            <div class="pipeline-step"><b>生成中</b><span>给进度、可取消性和合理等待预期。</span></div>
+            <div class="pipeline-step"><b>结果后</b><span>让用户核验来源、编辑、重试或接管。</span></div>
+            <div class="pipeline-step"><b>出错时</b><span>说明发生了什么，并提供可行的下一步。</span></div>
+          </div>
+          <div class="insight-box"><strong>关键不是“解释模型”：</strong>大多数时候，用户需要的是行动线索——这个结果适合用来做什么、哪里需要检查、怎么改、错了怎么办。</div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">2</span><h2>校准信任：不过度承诺，也不让用户无所适从</h2>
+          <p>用户会从名称、文案、动画、默认操作和错误反馈中形成心智模型。如果产品把系统称作“全能专家”，却无法处理模糊输入，第一次失败就会透支信任。更好的设计是逐步说明能力范围，并把不确定性转成具体核验动作。</p>
+          <table class="compare-table">
+            <thead><tr><th>场景</th><th>危险表达</th><th>更好的表达</th></tr></thead>
+            <tbody>
+              <tr><td>能力说明</td><td>什么都可以问我</td><td>我可以基于已上传的合同提取条款并标出原文</td></tr>
+              <tr><td>不确定</td><td>我可能不太确定</td><td>付款日期在两处出现冲突，请核对第 3 页与第 8 页</td></tr>
+              <tr><td>失败</td><td>生成失败，请重试</td><td>文件扫描质量过低。请上传清晰版，或手动输入合同编号</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">3</span><h2>给这个失败状态选择文案</h2>
+          <div data-choice-group>
+            <div class="scenario"><strong class="scenario-label">场景</strong><p>AI 读取报销单后，发现日期模糊、金额可能是 1,300 或 1,800 元。系统必须在提交前让用户处理。</p></div>
+            <div class="option-grid">
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>A. 识别失败</span><span class="option-desc">请重试。</span></button>
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>B. 置信度 0.61</span><span class="option-desc">模型低置信度，请处理异常。</span></button>
+              <button class="option" data-correct="true" data-success="这段反馈可以指导行动" data-success-copy="它指出冲突字段、给出候选值，并让用户在不可逆提交前确认。"><span class="option-title"><span class="option-radio"></span>C. 请确认金额</span><span class="option-desc">图片不清晰，金额可能是 1,300 或 1,800 元。查看原图并选择。</span></button>
+            </div>
+            <div class="feedback" role="status"><span class="feedback-icon">☆</span><div><strong>等待选择</strong><span>用户需要知道哪里错、影响什么、下一步怎么做。</span></div></div>
+          </div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">4</span><h2>自动化阶梯：把控制权放在风险相称的位置</h2>
+          <table class="compare-table">
+            <thead><tr><th>级别</th><th>系统行为</th><th>适合场景</th></tr></thead>
+            <tbody>
+              <tr><td>提示</td><td>AI 只高亮信息，人自己决定</td><td>高风险、能力尚未验证</td></tr>
+              <tr><td>建议</td><td>AI 给候选方案，人确认</td><td>大多数 Copilot 第一版</td></tr>
+              <tr><td>代拟</td><td>AI 完成草稿，人编辑后提交</td><td>内容生成、文档工作</td></tr>
+              <tr><td>自动执行</td><td>AI 在规则范围内直接行动</td><td>低风险、高可逆、持续监控</td></tr>
+            </tbody>
+          </table>
+          <p>自动化不是越高越先进。产品经理要根据错误损失、可发现性、可逆性和用户熟练度选择默认级别，并保留接管、撤销和申诉路径。</p>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">5</span><h2>快速测验</h2>
+          <div class="quiz"><p class="quiz-question">1. 好的 AI 错误信息最重要的是？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">展示技术堆栈</button><button class="quiz-option" data-correct="true">说明问题影响并提供可行下一步</button><button class="quiz-option" data-correct="false">统一写“未知错误”</button><button class="quiz-option" data-correct="false">隐藏所有失败</button></div><p class="quiz-result quiz-correct">正确。错误反馈的目的，是帮助用户恢复任务。</p><p class="quiz-result quiz-wrong">站在用户任务上想：他现在最需要什么信息才能继续？</p></div>
+          <div class="quiz"><p class="quiz-question">2. 什么时候更适合“建议 + 人工确认”？</p><div class="quiz-options"><button class="quiz-option" data-correct="true">结果有价值，但错误存在明显损失</button><button class="quiz-option" data-correct="false">所有情况都必须全自动</button><button class="quiz-option" data-correct="false">不允许收集任何反馈</button><button class="quiz-option" data-correct="false">任务完全没有用户</button></div><p class="quiz-result quiz-correct">正确。它在价值、风险与学习速度之间取得平衡。</p><p class="quiz-result quiz-wrong">想想第一版如何同时创造价值和控制风险。</p></div>
+          <div class="quiz"><p class="quiz-question">3. “置信度 61%”为什么常常不够？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">数字不能显示</button><button class="quiz-option" data-correct="true">用户不知道该如何据此行动</button><button class="quiz-option" data-correct="false">置信度一定是假的</button><button class="quiz-option" data-correct="false">界面不能出现百分比</button></div><p class="quiz-result quiz-correct">正确。应把不确定性转换成核验对象和行动建议。</p><p class="quiz-result quiz-wrong">数值本身不等于可用的产品反馈。</p></div>
+        </section>
+        <section class="learning-section" id="code-exercise"><span class="section-number">6</span><h2>思考练习：设计一个优雅失败</h2><div class="practice-card"><h3>为“AI 没找到答案”写完整恢复路径</h3><p>写清楚：系统应该告诉用户什么、提供哪两个下一步、记录什么反馈、何时转人工。</p><button class="hint-toggle" data-hint-toggle aria-expanded="false">查看思路提示</button><div class="hint-content">避免只写“重试”。可以提供：缩小问题范围、显示已搜索资料、让用户补充上下文、转交人工，并保留当前进度。</div></div></section>
+        <section class="learning-section"><span class="section-number">✦</span><h2>延伸阅读</h2><div class="reading-list">
+          <div class="reading-item"><a href="https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/" target="_blank" rel="noopener">Guidelines for Human-AI Interaction</a><div class="reading-meta">Microsoft HAX Toolkit · 18 条准则</div><div class="reading-desc">按首次交互、使用中、出错时和长期使用组织 AI 体验设计。</div></div>
+          <div class="reading-item"><a href="https://pair.withgoogle.com/guidebook-v2/chapter/mental-models/" target="_blank" rel="noopener">Mental Models</a><div class="reading-meta">Google PAIR · 指南</div><div class="reading-desc">理解用户如何形成对 AI 的预期，以及怎样分阶段校准信任。</div></div>
+          <div class="reading-item"><a href="https://pair.withgoogle.com/guidebook-v2/chapter/feedback-controls/" target="_blank" rel="noopener">Feedback + Control</a><div class="reading-meta">Google PAIR · 指南</div><div class="reading-desc">设计有价值的反馈机制，并平衡自动化与用户控制。</div></div>
+        </div></section>
+        <div class="lesson-nav"><a href="../02-find-the-problem/lesson.html">← 上一课：找到真问题</a><a href="../04-evals-and-metrics/lesson.html">下一课：评估与指标 →</a></div>
+      </article>
+    </main>
+    <aside class="task-panel"><div class="task-card"><div class="task-head"><h2>本课任务</h2></div><p>为一个 AI 失败场景写可恢复的用户体验。</p><p class="task-tip">包含：发生了什么、影响、用户下一步、人工接管条件。</p><textarea class="note-area" maxlength="800" data-note placeholder="当系统无法……时，我会先告诉用户……"></textarea><span class="note-count" data-note-count>0 / 800</span><div class="writing-guide"><strong>💡 自检</strong><ul><li>是否避免了空洞的“请重试”？</li><li>用户能看到并修改关键输入吗？</li><li>失败后能保留已有工作吗？</li></ul></div><button class="btn btn-primary save-note" data-save-note>保存我的答案</button><p class="autosave">✓ 输入内容会自动保存在本机</p></div></aside>
+  </div>
+  <script src="../assets/course.js"></script>
+  <script src="../../../assets/site-compliance.js"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI 产品经理实战课第 1 课：认识角色、职责与边界。">
+  <title>第 1 课｜AI 产品经理到底在做什么？</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+</head>
+<body data-lesson="01" style="--course-progress:16.67%">
+  <header class="topbar">
+    <a class="brand" href="../index.html">AI PM 实战课</a>
+    <div class="top-meta" aria-label="课程时长">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span>6 课 · 约 3 小时</span>
+    </div>
+  </header>
+
+  <div class="mobile-progress">
+    <div class="progress-label"><span>第 1 / 6 课</span><span>角色与边界</span></div>
+    <div class="progress-track"><div class="progress-fill"></div></div>
+  </div>
+
+  <div class="course-shell">
+    <aside class="course-sidebar" aria-label="课程目录">
+      <div class="progress-block">
+        <div class="progress-label"><span>课程进度</span><span>1 / 6</span></div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+      <nav class="lesson-list">
+        <a class="lesson-link active" data-lesson="01" aria-current="page" href="lesson.html"><span class="lesson-dot"></span><span class="lesson-number">01</span><span>角色与边界</span></a>
+        <a class="lesson-link" data-lesson="02" href="../02-find-the-problem/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">02</span><span>找到真问题</span></a>
+        <a class="lesson-link" data-lesson="03" href="../03-design-ai-experience/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">03</span><span>设计 AI 体验</span></a>
+        <a class="lesson-link" data-lesson="04" href="../04-evals-and-metrics/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">04</span><span>评估与指标</span></a>
+        <a class="lesson-link" data-lesson="05" href="../05-prototype-to-launch/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">05</span><span>从原型到上线</span></a>
+        <a class="lesson-link" data-lesson="06" href="../06-capstone/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">06</span><span>毕业实战</span></a>
+      </nav>
+      <a class="sidebar-map" href="../index.html" data-open-map>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5.5a5 5 0 0 1 6-1L12 6v14l-3-1.5a5 5 0 0 0-6 1z"/><path d="M21 5.5a5 5 0 0 0-6-1L12 6v14l3-1.5a5 5 0 0 1 6 1z"/></svg>
+        查看课程地图
+      </a>
+    </aside>
+
+    <main class="lesson-main">
+      <article class="lesson-content">
+        <header class="lesson-hero">
+          <h1>第 1 课｜AI 产品经理到底在做什么？</h1>
+          <p>从一个真实需求出发，走完问题定义、能力判断与结果验收。</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-start-challenge>开始挑战</button>
+            <button class="btn btn-quiet" type="button" data-open-map>查看课程地图 →</button>
+          </div>
+        </header>
+
+        <section class="learning-section">
+          <span class="section-number">1</span>
+          <h2>一个工作日，四个关键判断</h2>
+          <p class="lede">产品经理的日常，不是在不确定中给出“标准答案”，而是一次次做出更好的判断。</p>
+          <div class="pipeline" aria-label="AI 产品经理工作闭环">
+            <div class="pipeline-step"><b>找问题</b><span>谁在什么场景下，被什么任务卡住？</span></div>
+            <div class="pipeline-step"><b>判能力</b><span>AI 能否稳定改善结果，而不只是演示惊艳？</span></div>
+            <div class="pipeline-step"><b>定边界</b><span>什么时候自动做，什么时候让人确认？</span></div>
+            <div class="pipeline-step"><b>验结果</b><span>质量、成本、时延、风险是否一起达标？</span></div>
+          </div>
+          <div class="insight-box"><strong>核心认知：</strong>AI 产品经理不是“会写 Prompt 的普通产品经理”。你要把概率性的模型能力，包装成用户可以理解、信任、纠错且愿意持续使用的产品系统。</div>
+        </section>
+
+        <section class="learning-section">
+          <span class="section-number">2</span>
+          <h2>先做一次产品判断</h2>
+          <p class="lede">用户提出了一个需求。先别急着选模型，判断哪一种产品方向更贴近任务现场。</p>
+          <div class="scenario">
+            <strong class="scenario-label">用户需求</strong>
+            <p>我们的客服每天要手动整理用户反馈，效率很低。能不能做一个 AI 工具，自动把反馈分类并生成日报？</p>
+          </div>
+          <div data-choice-group>
+            <p>选择一个你认为更合适的第一版方向：</p>
+            <div class="option-grid">
+              <button class="option" type="button" data-correct="false"
+                data-retry="有价值，但离真实决策太远"
+                data-retry-copy="内部提效只服务客服团队，没有验证分类结果是否真的帮助后续决策。">
+                <span class="option-title"><span class="option-radio"></span>A. 内部提效工具</span>
+                <span class="option-desc">自动分类并生成日报，目标是减少客服整理时间。</span>
+              </button>
+              <button class="option" type="button" data-correct="true"
+                data-success="不错！B 更接近一线场景"
+                data-success-copy="它把建议、总结和可编辑结果嵌入客服工作台，既能提效，也保留人的判断与反馈。">
+                <span class="option-title"><span class="option-radio"></span>B. 客服辅助 Copilot</span>
+                <span class="option-desc">在工作台中给出分类建议、总结与回复草稿，由人确认。</span>
+              </button>
+              <button class="option" type="button" data-correct="false"
+                data-retry="方向跨度太大"
+                data-retry-copy="直接让用户自助分析会改变目标用户、权限和数据产品形态，不适合作为最快验证。">
+                <span class="option-title"><span class="option-radio"></span>C. 用户自助分析</span>
+                <span class="option-desc">让客户自己查询和分析反馈数据，生成可视化报告。</span>
+              </button>
+            </div>
+            <div class="feedback" role="status" aria-live="polite">
+              <span class="feedback-icon">☆</span>
+              <div><strong>等待选择</strong><span>先回到用户任务，看看这个方案是否真的改善了关键结果。</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="learning-section">
+          <span class="section-number">3</span>
+          <h2>为什么“辅助”常比“全自动”更适合第一版？</h2>
+          <p>AI 的输出不是确定性规则。第一版产品需要尽快收集失败样本，同时避免错误直接伤害用户。把 AI 放在人的工作流里，让人确认、编辑和纠错，通常能同时获得三件事：真实使用价值、可观察的失败数据，以及明确的责任边界。</p>
+          <table class="compare-table">
+            <thead><tr><th>判断维度</th><th>A. 内部报表</th><th>B. 客服辅助</th><th>C. 用户自助</th></tr></thead>
+            <tbody>
+              <tr><td>价值影响面</td><td>中：只服务管理</td><td><strong>高：直接改善一线效率</strong></td><td>中：需要用户主动使用</td></tr>
+              <tr><td>可落地性</td><td>中：依赖数据清洗</td><td><strong>中：可小范围试点</strong></td><td>高难：权限和解释要求高</td></tr>
+              <tr><td>可验证性</td><td>慢：难看到决策结果</td><td><strong>快：编辑率与采纳率可见</strong></td><td>慢：需要长期行为数据</td></tr>
+            </tbody>
+          </table>
+          <div class="story-card">
+            <strong>真实工作方式</strong>
+            <p>你不会只交付一张原型图。你还要和算法工程师定义输入输出，与设计师安排“接受 / 编辑 / 拒绝”，和业务负责人确定试点团队，再用失败样本决定下一轮优先级。</p>
+          </div>
+        </section>
+
+        <section class="learning-section">
+          <span class="section-number">4</span>
+          <h2>角色边界：你负责让团队做出可验证的选择</h2>
+          <p>AI 产品经理不需要替代算法、设计、工程或法务，但必须能把这些专业判断组织成一个产品决策。你的核心产出通常包括：机会判断、任务流程、能力边界、数据与评估方案、上线门槛、反馈闭环和迭代优先级。</p>
+          <table class="compare-table">
+            <thead><tr><th>协作角色</th><th>对方重点负责</th><th>你必须共同说清</th></tr></thead>
+            <tbody>
+              <tr><td>算法 / AI 工程</td><td>模型、Prompt、检索、工具调用</td><td>成功标准、失败类型、成本时延预算</td></tr>
+              <tr><td>设计</td><td>交互、信息层级、反馈与恢复</td><td>信任边界、自动化级别、用户控制</td></tr>
+              <tr><td>研发</td><td>系统、数据链路、权限与监控</td><td>降级路径、日志、灰度与回滚</td></tr>
+              <tr><td>业务 / 运营</td><td>流程、样本、领域知识</td><td>试点范围、人工兜底、价值指标</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="learning-section">
+          <span class="section-number">5</span>
+          <h2>快速测验</h2>
+          <div class="quiz">
+            <p class="quiz-question">1. 第一版 AI 产品最应该优先证明什么？</p>
+            <div class="quiz-options">
+              <button class="quiz-option" data-correct="false">模型参数量足够大</button>
+              <button class="quiz-option" data-correct="true">能稳定改善一个真实任务结果</button>
+              <button class="quiz-option" data-correct="false">界面看起来像聊天机器人</button>
+              <button class="quiz-option" data-correct="false">功能数量超过竞品</button>
+            </div>
+            <p class="quiz-result quiz-correct">正确。模型只是手段，产品价值必须落到用户任务的结果上。</p>
+            <p class="quiz-result quiz-wrong">再想想：用户购买的不是模型，而是更好的任务结果。</p>
+          </div>
+          <div class="quiz">
+            <p class="quiz-question">2. 为什么要设计“人可确认、编辑、拒绝”的机制？</p>
+            <div class="quiz-options">
+              <button class="quiz-option" data-correct="true">控制风险，并获得高质量失败反馈</button>
+              <button class="quiz-option" data-correct="false">让页面显得功能更多</button>
+              <button class="quiz-option" data-correct="false">避免做任何自动化</button>
+              <button class="quiz-option" data-correct="false">减少所有日志记录</button>
+            </div>
+            <p class="quiz-result quiz-correct">正确。可控的人机协作是早期产品建立信任和学习闭环的关键。</p>
+            <p class="quiz-result quiz-wrong">提示：想想模型出错时，谁能阻止伤害并提供纠错信号。</p>
+          </div>
+          <div class="quiz">
+            <p class="quiz-question">3. 哪项更接近 AI 产品经理的核心职责？</p>
+            <div class="quiz-options">
+              <button class="quiz-option" data-correct="false">独立训练基础模型</button>
+              <button class="quiz-option" data-correct="false">替设计师画完全部界面</button>
+              <button class="quiz-option" data-correct="true">组织跨职能团队定义并验证产品决策</button>
+              <button class="quiz-option" data-correct="false">只负责写 PRD</button>
+            </div>
+            <p class="quiz-result quiz-correct">正确。文档是载体，真正的职责是持续降低产品决策的不确定性。</p>
+            <p class="quiz-result quiz-wrong">AI PM 不是某一个职能的替代者，而是产品判断的组织者。</p>
+          </div>
+        </section>
+
+        <section class="learning-section" id="code-exercise">
+          <span class="section-number">6</span>
+          <h2>思考练习：写出你的角色定义</h2>
+          <div class="practice-card">
+            <h3>用三句话描述 AI 产品经理</h3>
+            <p>选择一个你熟悉的工作场景，分别回答：你要做什么判断？为什么由产品经理推动？你还需要提升哪些能力？把答案写进右侧“本课任务”。</p>
+            <button class="hint-toggle" type="button" data-hint-toggle aria-expanded="false">查看思路提示</button>
+            <div class="hint-content">不要写“负责 AI 产品全生命周期”这种空话。尝试使用：用户任务、能力边界、评估标准、人机协作、风险与迭代。</div>
+          </div>
+        </section>
+
+        <section class="learning-section">
+          <span class="section-number">✦</span>
+          <h2>延伸阅读</h2>
+          <div class="reading-list">
+            <div class="reading-item">
+              <a href="https://pair.withgoogle.com/guidebook-v2/" target="_blank" rel="noopener">People + AI Guidebook</a>
+              <div class="reading-meta">Google PAIR · 实践指南</div>
+              <div class="reading-desc">面向 UX 和产品经理的人本 AI 产品方法，覆盖用户需求、心智模型、反馈与失败恢复。</div>
+            </div>
+            <div class="reading-item">
+              <a href="https://www.microsoft.com/en-us/haxtoolkit/" target="_blank" rel="noopener">Microsoft HAX Toolkit</a>
+              <div class="reading-meta">Microsoft Research · 工具包</div>
+              <div class="reading-desc">用可操作的设计准则帮助团队规划 AI 系统如何与人协作。</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="lesson-nav">
+          <span>← 这是第一课</span>
+          <a href="../02-find-the-problem/lesson.html">下一课：找到真问题 →</a>
+        </div>
+      </article>
+    </main>
+
+    <aside class="task-panel" aria-label="本课任务">
+      <div class="task-card">
+        <div class="task-head">
+          <h2>本课任务</h2>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5.5a5 5 0 0 1 6-1L12 6v14l-3-1.5a5 5 0 0 0-6 1z"/><path d="M21 5.5a5 5 0 0 0-6-1L12 6v14l3-1.5a5 5 0 0 1 6 1z"/></svg>
+        </div>
+        <p>结合你的理解，写下你对「AI 产品经理日常工作核心」的看法。</p>
+        <p class="task-tip">提示：可以从“做什么判断、为什么、需要哪些能力”来写。</p>
+        <textarea class="note-area" maxlength="800" data-note placeholder="在这里输入你的思考…"></textarea>
+        <span class="note-count" data-note-count>0 / 800</span>
+        <div class="writing-guide">
+          <strong>💡 写作建议</strong>
+          <ul><li>先写你认为产品经理在判断什么</li><li>再写为什么这些判断重要</li><li>最后写你还需要提升哪些能力</li></ul>
+        </div>
+        <button class="btn btn-primary save-note" type="button" data-save-note>保存我的答案</button>
+        <p class="autosave">✓ 输入内容会自动保存在本机</p>
+      </div>
+    </aside>
+  </div>
+
+  <dialog class="map-dialog" id="course-map">
+    <header><h2>6 课，从判断到上线</h2><button class="dialog-close" type="button" data-close-map aria-label="关闭">×</button></header>
+    <div class="map-grid">
+      <div class="map-node" data-number="01"><a href="lesson.html">角色与边界</a><p>知道 AI PM 真正负责哪些判断。</p></div>
+      <div class="map-node" data-number="02"><a href="../02-find-the-problem/lesson.html">找到真问题</a><p>从模糊需求拆出可验证机会。</p></div>
+      <div class="map-node" data-number="03"><a href="../03-design-ai-experience/lesson.html">设计 AI 体验</a><p>设计信任、控制与失败恢复。</p></div>
+      <div class="map-node" data-number="04"><a href="../04-evals-and-metrics/lesson.html">评估与指标</a><p>把“看起来不错”变成测试标准。</p></div>
+      <div class="map-node" data-number="05"><a href="../05-prototype-to-launch/lesson.html">从原型到上线</a><p>规划试点、监控、灰度与回滚。</p></div>
+      <div class="map-node" data-number="06"><a href="../06-capstone/lesson.html">毕业实战</a><p>完成一页 AI 产品方案。</p></div>
+    </div>
+  </dialog>
+  <script src="../assets/course.js"></script>
+  <script src="../../../assets/site-compliance.js"></script>
+</body>
+</html>

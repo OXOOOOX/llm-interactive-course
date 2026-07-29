@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI 产品经理实战课第 5 课：从原型、试点到安全上线。">
+  <title>第 5 课｜从原型走到真实上线</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+</head>
+<body data-lesson="05" style="--course-progress:83.33%">
+  <header class="topbar"><a class="brand" href="../index.html">AI PM 实战课</a><div class="top-meta"><span>6 课 · 约 3 小时</span></div></header>
+  <div class="mobile-progress"><div class="progress-label"><span>第 5 / 6 课</span><span>从原型到上线</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+  <div class="course-shell">
+    <aside class="course-sidebar" aria-label="课程目录">
+      <div class="progress-block"><div class="progress-label"><span>课程进度</span><span>5 / 6</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+      <nav class="lesson-list">
+        <a class="lesson-link" data-lesson="01" href="../01-role-and-boundary/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">01</span><span>角色与边界</span></a>
+        <a class="lesson-link" data-lesson="02" href="../02-find-the-problem/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">02</span><span>找到真问题</span></a>
+        <a class="lesson-link" data-lesson="03" href="../03-design-ai-experience/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">03</span><span>设计 AI 体验</span></a>
+        <a class="lesson-link" data-lesson="04" href="../04-evals-and-metrics/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">04</span><span>评估与指标</span></a>
+        <a class="lesson-link active" data-lesson="05" aria-current="page" href="lesson.html"><span class="lesson-dot"></span><span class="lesson-number">05</span><span>从原型到上线</span></a>
+        <a class="lesson-link" data-lesson="06" href="../06-capstone/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">06</span><span>毕业实战</span></a>
+      </nav><a class="sidebar-map" href="../index.html">查看课程地图 →</a>
+    </aside>
+    <main class="lesson-main">
+      <article class="lesson-content">
+        <header class="lesson-hero"><h1>第 5 课｜从原型走到真实上线</h1><p>把一次好看的 Demo，变成可试点、可监控、可降级、可持续迭代的产品。</p><div class="hero-actions"><button class="btn btn-primary" data-start-challenge>开始挑战</button><button class="btn btn-secondary" data-exercise-toggle>隐藏思考练习</button></div></header>
+        <section class="learning-section"><span class="section-number">0</span><h2>快速回顾</h2><p>到这里，你已经有问题、体验与评估标准。上线阶段要保证这些判断真的进入系统：谁能用、数据如何流动、失败如何被发现、什么情况下暂停或回滚。</p></section>
+        <section class="learning-section">
+          <span class="section-number">1</span><h2>Demo 到产品，差的是运行闭环</h2>
+          <table class="compare-table">
+            <thead><tr><th>Demo 常忽略</th><th>产品必须回答</th></tr></thead>
+            <tbody>
+              <tr><td>只展示理想输入</td><td>空输入、长输入、敏感数据、越权请求怎么办？</td></tr>
+              <tr><td>结果由团队现场挑选</td><td>真实流量下质量分布、长尾错误如何监控？</td></tr>
+              <tr><td>不计调用代价</td><td>单任务成本、峰值时延、配额与缓存策略是什么？</td></tr>
+              <tr><td>失败后刷新页面</td><td>用户如何恢复，系统如何降级，团队如何回滚？</td></tr>
+            </tbody>
+          </table>
+          <div class="insight-box"><strong>PRD 的变化：</strong>除了用户故事，还要写能力边界、数据权限、评估集、上线门槛、日志字段、人工兜底、降级体验和模型变更策略。</div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">2</span><h2>把试点步骤排成正确顺序</h2>
+          <p class="lede">使用上下按钮调整顺序，再与下方原则核对。</p>
+          <div class="sortable" data-sortable>
+            <div class="sort-item"><span class="sort-index">1</span><span>用历史数据做离线评估，先找明显失败</span><span class="sort-controls"><button data-move="up">↑</button><button data-move="down">↓</button></span></div>
+            <div class="sort-item"><span class="sort-index">2</span><span>影子模式：系统运行但不影响用户，只比较结果</span><span class="sort-controls"><button data-move="up">↑</button><button data-move="down">↓</button></span></div>
+            <div class="sort-item"><span class="sort-index">3</span><span>少量自愿试点用户，结果必须人工确认</span><span class="sort-controls"><button data-move="up">↑</button><button data-move="down">↓</button></span></div>
+            <div class="sort-item"><span class="sort-index">4</span><span>达到门槛后逐步扩大流量，持续监控回归</span><span class="sort-controls"><button data-move="up">↑</button><button data-move="down">↓</button></span></div>
+          </div>
+          <p>基本原则是：先离线、再无影响地观察、再小范围有控制地使用、最后逐步放量。每一步都要有进入条件、退出条件和负责人。</p>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">3</span><h2>一次上线决策</h2>
+          <div data-choice-group>
+            <div class="scenario"><strong class="scenario-label">试点报告</strong><p>总结助手总体采纳率 72%，但涉及数字的回答有 3% 严重错误；当前界面不显示来源，也没有一键回退。</p></div>
+            <div class="option-grid">
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>A. 全量上线</span><span class="option-desc">采纳率已经很好。</span></button>
+              <button class="option" data-correct="true" data-success="正确：风险门槛优先" data-success-copy="先限制数字类场景、增加来源与回退，再针对严重错误建回归集，达标后扩大流量。"><span class="option-title"><span class="option-radio"></span>B. 限定场景继续试点</span><span class="option-desc">修复核验与回退，严重错误达标后再放量。</span></button>
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>C. 永久下线 AI</span><span class="option-desc">任何错误都说明方向失败。</span></button>
+            </div>
+            <div class="feedback" role="status"><span class="feedback-icon">☆</span><div><strong>等待选择</strong><span>高采纳率能否抵消严重错误？还缺哪些产品控制？</span></div></div>
+          </div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">4</span><h2>上线清单：能力、运行、治理</h2>
+          <div class="pipeline">
+            <div class="pipeline-step"><b>能力门槛</b><span>评估集通过；已知失败有清晰边界。</span></div>
+            <div class="pipeline-step"><b>运行门槛</b><span>时延、成本、限流、超时、降级可用。</span></div>
+            <div class="pipeline-step"><b>安全门槛</b><span>权限、隐私、内容安全、审计日志到位。</span></div>
+            <div class="pipeline-step"><b>组织门槛</b><span>告警负责人、人工兜底、暂停与回滚清晰。</span></div>
+          </div>
+          <p>产品经理的职责不是亲自实现所有基础设施，而是确保上线决策有证据、有负责人、有止损线。上线后的线上失败必须回流评估集，形成“监控 → 归因 → 修复 → 回归”的循环。</p>
+          <div class="story-card"><strong>模型变更也要当作产品变更</strong><p>更换模型、系统提示、检索索引或工具权限，都可能改变行为。记录版本，在代表性评估集上对比，再逐步发布；不要把供应商升级当作无感基础设施更新。</p></div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">5</span><h2>快速测验</h2>
+          <div class="quiz"><p class="quiz-question">1. 影子模式的主要作用是？</p><div class="quiz-options"><button class="quiz-option" data-correct="true">在不影响用户的情况下观察真实输入表现</button><button class="quiz-option" data-correct="false">隐藏所有日志</button><button class="quiz-option" data-correct="false">直接替用户执行操作</button><button class="quiz-option" data-correct="false">跳过离线评估</button></div><p class="quiz-result quiz-correct">正确。它连接离线测试与真实流量，又不直接改变用户结果。</p><p class="quiz-result quiz-wrong">影子模式会运行系统，但不把结果作用于真实用户。</p></div>
+          <div class="quiz"><p class="quiz-question">2. 哪项应该成为上线前的明确产出？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">一张漂亮海报</button><button class="quiz-option" data-correct="true">进入、暂停与回滚条件</button><button class="quiz-option" data-correct="false">只写理想用户故事</button><button class="quiz-option" data-correct="false">取消人工兜底</button></div><p class="quiz-result quiz-correct">正确。上线是一组可控制的决策，不是一个日期。</p><p class="quiz-result quiz-wrong">真实系统必须知道何时停止和如何恢复。</p></div>
+          <div class="quiz"><p class="quiz-question">3. 模型或 Prompt 变更后应该？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">直接全量替换</button><button class="quiz-option" data-correct="true">跑回归评估并逐步发布</button><button class="quiz-option" data-correct="false">只看供应商宣传</button><button class="quiz-option" data-correct="false">删除旧版本记录</button></div><p class="quiz-result quiz-correct">正确。任何影响行为的改动都需要可比较、可回滚。</p><p class="quiz-result quiz-wrong">概率系统的小改动也可能造成不可预期回归。</p></div>
+        </section>
+        <section class="learning-section" id="code-exercise"><span class="section-number">6</span><h2>思考练习：写一张试点卡</h2><div class="practice-card"><h3>为你的产品规划两周试点</h3><p>写出试点用户、核心任务、流量范围、人工兜底、每日监控、进入门槛和暂停条件。</p><button class="hint-toggle" data-hint-toggle aria-expanded="false">查看思路提示</button><div class="hint-content">试点不是把功能发给 10% 用户就结束。先说明为什么选择这批人、他们如何反馈、谁每天看失败、什么错误出现一次就暂停。</div></div></section>
+        <section class="learning-section"><span class="section-number">✦</span><h2>延伸阅读</h2><div class="reading-list">
+          <div class="reading-item"><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noopener">AI Risk Management Framework</a><div class="reading-meta">NIST · 风险框架</div><div class="reading-desc">将可信与风险管理纳入 AI 系统的设计、开发、使用和评估。</div></div>
+          <div class="reading-item"><a href="https://developers.openai.com/api/docs/guides/safety-best-practices" target="_blank" rel="noopener">Safety best practices</a><div class="reading-meta">OpenAI · 官方指南</div><div class="reading-desc">覆盖红队、人工审查、输入输出约束与安全标识等实践。</div></div>
+        </div></section>
+        <div class="lesson-nav"><a href="../04-evals-and-metrics/lesson.html">← 上一课：评估与指标</a><a href="../06-capstone/lesson.html">下一课：毕业实战 →</a></div>
+      </article>
+    </main>
+    <aside class="task-panel"><div class="task-card"><div class="task-head"><h2>本课任务</h2></div><p>为你的 AI 产品写一张两周试点计划。</p><p class="task-tip">包括试点对象、范围、指标、人工兜底、暂停条件与负责人。</p><textarea class="note-area" maxlength="800" data-note placeholder="试点对象：…&#10;进入门槛：…&#10;暂停条件：…"></textarea><span class="note-count" data-note-count>0 / 800</span><div class="writing-guide"><strong>💡 自检</strong><ul><li>出现严重错误时谁能立即暂停？</li><li>失败样本怎样进入评估集？</li><li>模型变更能被追踪和回滚吗？</li></ul></div><button class="btn btn-primary save-note" data-save-note>保存我的答案</button><p class="autosave">✓ 输入内容会自动保存在本机</p></div></aside>
+  </div>
+  <script src="../assets/course.js"></script>
+  <script src="../../../assets/site-compliance.js"></script>
+</body>
+</html>

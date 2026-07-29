@@ -9,7 +9,39 @@
 
 ---
 
+## 🚀 Zeabur 一键部署
+
+本仓库已经按 Zeabur 静态站点方式配置完成，无需填写环境变量、构建命令或启动命令。部署后的域名根路径会自动进入 **AI 产品经理实战课**。
+
+1. 将整个仓库上传到 GitHub。
+2. 在 Zeabur 新建项目，选择 **Add Service → GitHub**。
+3. 选择这个 GitHub 仓库并点击部署。
+4. 部署完成后，在服务的 **Domains** 页面使用 Zeabur 域名或绑定自己的域名。
+
+Zeabur 会使用根目录的 `index.html` 作为静态站点入口；`_redirects` 和 `_headers` 分别负责首页跳转与基础安全响应头。全站通过 `connect-src 'none'` 禁止浏览器发起 Fetch、XHR、WebSocket 等实时连接，仅提供静态课程内容，不调用生成式人工智能服务。后续向 GitHub 推送更新时，Zeabur 会自动重新部署。
+
+---
+
 ## 📚 已生成的课程
+
+### AI 产品经理实战课
+
+> 从真实问题出发，学习 AI 产品经理如何判断机会、设计人机协作、建立评估体系，并把原型安全地推向上线。
+
+**受众**：零基础产品经理 / 想转向 AI 产品方向的学习者
+
+**课数**：6 课
+
+**配套练习**：✅ 交互判断、测验、思考笔记与毕业方案
+
+| 目录 | 主题 |
+|------|------|
+| [`01-role-and-boundary`](courses/AI产品经理实战课/01-role-and-boundary/) | 角色与边界 |
+| [`02-find-the-problem`](courses/AI产品经理实战课/02-find-the-problem/) | 找到真问题 |
+| [`03-design-ai-experience`](courses/AI产品经理实战课/03-design-ai-experience/) | 设计 AI 体验 |
+| [`04-evals-and-metrics`](courses/AI产品经理实战课/04-evals-and-metrics/) | 评估与指标 |
+| [`05-prototype-to-launch`](courses/AI产品经理实战课/05-prototype-to-launch/) | 从原型到上线 |
+| [`06-capstone`](courses/AI产品经理实战课/06-capstone/) | 毕业实战 |
 
 ### 大模型训练课
 
@@ -106,8 +138,17 @@ python exercise.py
 
 ```
 .
+├── index.html                        # Zeabur 静态站点入口
+├── _redirects                       # 首页服务端跳转规则
+├── _headers                         # 基础安全响应头
+├── assets/
+│   └── site-compliance.js           # 全站固定备案栏与静态服务声明
 ├── README.md
 ├── courses/                          # 已生成的课程
+│   ├── AI产品经理实战课/                # 6 课 · 交互式产品实战
+│   │   ├── index.html
+│   │   └── 01-role-and-boundary/
+│   │       └── lesson.html
 │   ├── 大模型训练课/                   # 8 课 · 深色科技风 · 含代码练习
 │   │   ├── 01-tokenization/
 │   │   │   ├── lesson.html

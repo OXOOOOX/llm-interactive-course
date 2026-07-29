@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI 产品经理实战课第 4 课：建立评估集、质量指标与上线门槛。">
+  <title>第 4 课｜把“感觉不错”变成评估体系</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+</head>
+<body data-lesson="04" style="--course-progress:66.67%">
+  <header class="topbar"><a class="brand" href="../index.html">AI PM 实战课</a><div class="top-meta"><span>6 课 · 约 3 小时</span></div></header>
+  <div class="mobile-progress"><div class="progress-label"><span>第 4 / 6 课</span><span>评估与指标</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+  <div class="course-shell">
+    <aside class="course-sidebar" aria-label="课程目录">
+      <div class="progress-block"><div class="progress-label"><span>课程进度</span><span>4 / 6</span></div><div class="progress-track"><div class="progress-fill"></div></div></div>
+      <nav class="lesson-list">
+        <a class="lesson-link" data-lesson="01" href="../01-role-and-boundary/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">01</span><span>角色与边界</span></a>
+        <a class="lesson-link" data-lesson="02" href="../02-find-the-problem/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">02</span><span>找到真问题</span></a>
+        <a class="lesson-link" data-lesson="03" href="../03-design-ai-experience/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">03</span><span>设计 AI 体验</span></a>
+        <a class="lesson-link active" data-lesson="04" aria-current="page" href="lesson.html"><span class="lesson-dot"></span><span class="lesson-number">04</span><span>评估与指标</span></a>
+        <a class="lesson-link" data-lesson="05" href="../05-prototype-to-launch/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">05</span><span>从原型到上线</span></a>
+        <a class="lesson-link" data-lesson="06" href="../06-capstone/lesson.html"><span class="lesson-dot"></span><span class="lesson-number">06</span><span>毕业实战</span></a>
+      </nav><a class="sidebar-map" href="../index.html">查看课程地图 →</a>
+    </aside>
+    <main class="lesson-main">
+      <article class="lesson-content">
+        <header class="lesson-hero"><h1>第 4 课｜把“感觉不错”变成评估体系</h1><p>用代表性样本、清晰评分规则和产品指标，建立团队共同的质量语言。</p><div class="hero-actions"><button class="btn btn-primary" data-start-challenge>开始挑战</button><button class="btn btn-secondary" data-exercise-toggle>隐藏思考练习</button></div></header>
+        <section class="learning-section"><span class="section-number">0</span><h2>快速回顾</h2><p>问题定义告诉我们为什么做，体验设计告诉用户如何与系统协作。评估体系要回答另一件事：这次改动是否真的更好，而且好到可以让真实用户承担后果？</p></section>
+        <section class="learning-section">
+          <span class="section-number">1</span><h2>评估不是最后一次考试，而是开发方向盘</h2>
+          <p>模型输出具有概率性。同一功能在常见样本上很好，遇到长文本、歧义、方言或越权请求就可能失败。产品经理要在开发早期建立一套小而有代表性的评估集，每次更换模型、Prompt、检索策略或工具时都重复运行。</p>
+          <div class="pipeline">
+            <div class="pipeline-step"><b>定义任务</b><span>输入是什么，期望输出服务哪个决策？</span></div>
+            <div class="pipeline-step"><b>收集样本</b><span>覆盖常见、边界、失败与高风险案例。</span></div>
+            <div class="pipeline-step"><b>写评分规则</b><span>什么算好、差在哪里、谁来判断？</span></div>
+            <div class="pipeline-step"><b>持续回归</b><span>每次改动都比较质量、成本与时延。</span></div>
+          </div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">2</span><h2>四层指标，不能只看“准确率”</h2>
+          <div class="meter-row"><span>任务质量</span><div class="meter"><span style="--value:90%"></span></div><strong>90%</strong></div>
+          <div class="meter-row"><span>可用体验</span><div class="meter"><span style="--value:76%"></span></div><strong>76%</strong></div>
+          <div class="meter-row"><span>业务结果</span><div class="meter"><span style="--value:62%"></span></div><strong>62%</strong></div>
+          <div class="meter-row"><span>风险门槛</span><div class="meter"><span style="--value:100%;background:var(--coral)"></span></div><strong>硬门槛</strong></div>
+          <table class="compare-table">
+            <thead><tr><th>层级</th><th>典型问题</th><th>示例指标</th></tr></thead>
+            <tbody>
+              <tr><td>任务质量</td><td>输出本身对不对？</td><td>召回率、事实一致性、评分量表</td></tr>
+              <tr><td>体验</td><td>用户能否高效核验和使用？</td><td>编辑率、采纳率、完成时长、失败恢复率</td></tr>
+              <tr><td>业务</td><td>是否改变目标结果？</td><td>成本、转化、响应时间、留存</td></tr>
+              <tr><td>风险</td><td>不可接受错误是否被挡住？</td><td>隐私泄露率、越权率、严重幻觉率</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">3</span><h2>为客服回复助手选上线门槛</h2>
+          <div data-choice-group>
+            <div class="scenario"><strong class="scenario-label">场景</strong><p>助手生成客服回复草稿，客服提交前必须确认。下列哪组指标最适合作为首轮试点门槛？</p></div>
+            <div class="option-grid">
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>A. 只看平均分</span><span class="option-desc">内部同事觉得“挺像人写的”。</span></button>
+              <button class="option" data-correct="true" data-success="指标形成了完整闭环" data-success-copy="它同时覆盖离线质量、真实使用、效率和严重风险，并明确硬门槛。"><span class="option-title"><span class="option-radio"></span>B. 多层门槛</span><span class="option-desc">事实正确率 ≥95%，采纳率 ≥60%，时长降 30%，严重越权 = 0。</span></button>
+              <button class="option" data-correct="false"><span class="option-title"><span class="option-radio"></span>C. 只看使用量</span><span class="option-desc">一周生成超过 10,000 条。</span></button>
+            </div>
+            <div class="feedback" role="status"><span class="feedback-icon">☆</span><div><strong>等待选择</strong><span>想想质量、体验、业务和风险是否都被覆盖。</span></div></div>
+          </div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">4</span><h2>怎样构造第一版评估集</h2>
+          <p>不要从网上随便找 100 条漂亮样本。先从真实工作流收集 30–50 条，按场景、输入难度、用户类型和失败风险分层；为每条写清参考输出或评分维度；再把线上失败持续加入回归集。评估集不是静态题库，而是产品经验的累积。</p>
+          <div class="story-card"><strong>一个实用配比</strong><p>60% 常见主流程 + 20% 边界情况 + 10% 已知历史失败 + 10% 高风险对抗样本。比例可变，但高风险样本即使低频，也必须单独设门槛。</p></div>
+          <div class="insight-box"><strong>自动评分也要被评估：</strong>LLM-as-judge 很方便，但评分标准、顺序偏差与领域知识都可能影响结果。抽样人工复核，并定期检查自动评分与专家判断的一致性。</div>
+        </section>
+        <section class="learning-section">
+          <span class="section-number">5</span><h2>快速测验</h2>
+          <div class="quiz"><p class="quiz-question">1. 评估集最重要的特征是？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">数量越大越好</button><button class="quiz-option" data-correct="true">能代表真实任务及关键失败</button><button class="quiz-option" data-correct="false">全部由模型生成</button><button class="quiz-option" data-correct="false">只包含容易样本</button></div><p class="quiz-result quiz-correct">正确。代表性比盲目追求数量更重要。</p><p class="quiz-result quiz-wrong">评估的目标是预测真实产品表现。</p></div>
+          <div class="quiz"><p class="quiz-question">2. 哪个指标最能反映用户实际采用输出？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">参数量</button><button class="quiz-option" data-correct="true">采纳率与编辑率</button><button class="quiz-option" data-correct="false">训练轮数</button><button class="quiz-option" data-correct="false">页面曝光量</button></div><p class="quiz-result quiz-correct">正确。它连接了模型输出与用户真实行为。</p><p class="quiz-result quiz-wrong">想想用户拿到输出后实际做了什么。</p></div>
+          <div class="quiz"><p class="quiz-question">3. 严重隐私泄露率应该怎样处理？</p><div class="quiz-options"><button class="quiz-option" data-correct="false">与点击率取平均</button><button class="quiz-option" data-correct="true">设为独立硬门槛</button><button class="quiz-option" data-correct="false">只在上线后观察</button><button class="quiz-option" data-correct="false">隐藏在综合分里</button></div><p class="quiz-result quiz-correct">正确。严重风险不能被其他好指标抵消。</p><p class="quiz-result quiz-wrong">某些风险必须零容忍或单独设上限。</p></div>
+        </section>
+        <section class="learning-section" id="code-exercise"><span class="section-number">6</span><h2>思考练习：写一张评估卡</h2><div class="practice-card"><h3>为你的 AI 功能定义四层指标</h3><p>各写一个：任务质量指标、体验指标、业务结果指标、风险硬门槛。每项都写明样本、测量方法和通过阈值。</p><button class="hint-toggle" data-hint-toggle aria-expanded="false">查看思路提示</button><div class="hint-content">避免“准确率高”“用户满意”这类模糊词。写成：在 50 条分层样本上，关键字段召回率 ≥ 95%；试点用户中位编辑时长 ≤ 2 分钟。</div></div></section>
+        <section class="learning-section"><span class="section-number">✦</span><h2>延伸阅读</h2><div class="reading-list">
+          <div class="reading-item"><a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices" target="_blank" rel="noopener">Evaluation best practices</a><div class="reading-meta">OpenAI · 官方指南</div><div class="reading-desc">从目标、数据集、指标和持续评估建立可靠的评估流程。</div></div>
+          <div class="reading-item"><a href="https://developers.openai.com/api/docs/guides/evals" target="_blank" rel="noopener">Working with evals</a><div class="reading-meta">OpenAI · 官方文档</div><div class="reading-desc">了解任务定义、测试输入、结果分析和迭代的基本流程。</div></div>
+        </div></section>
+        <div class="lesson-nav"><a href="../03-design-ai-experience/lesson.html">← 上一课：设计 AI 体验</a><a href="../05-prototype-to-launch/lesson.html">下一课：从原型到上线 →</a></div>
+      </article>
+    </main>
+    <aside class="task-panel"><div class="task-card"><div class="task-head"><h2>本课任务</h2></div><p>为你选的 AI 功能定义一套最小评估体系。</p><p class="task-tip">至少包含：样本构成、评分规则、产品指标和风险硬门槛。</p><textarea class="note-area" maxlength="800" data-note placeholder="任务质量：…&#10;体验指标：…&#10;业务指标：…&#10;风险门槛：…"></textarea><span class="note-count" data-note-count>0 / 800</span><div class="writing-guide"><strong>💡 自检</strong><ul><li>样本覆盖常见与失败场景吗？</li><li>指标能被稳定复现吗？</li><li>风险是否被单独设门槛？</li></ul></div><button class="btn btn-primary save-note" data-save-note>保存我的答案</button><p class="autosave">✓ 输入内容会自动保存在本机</p></div></aside>
+  </div>
+  <script src="../assets/course.js"></script>
+  <script src="../../../assets/site-compliance.js"></script>
+</body>
+</html>

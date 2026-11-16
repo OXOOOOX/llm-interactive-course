@@ -56,7 +56,7 @@ def healthy(path,env,timeout=120):
             if state['Config']['Image']!=env['HOMEPAGE_IMAGE'] or image_id(state['Config']['Image'])!=env['HOMEPAGE_IMAGE'] or state['Config'].get('Labels',{}).get('org.opencontainers.image.revision')!=path.name:
                 raise RuntimeError('Running image differs from verified release')
             if state['State'].get('Health',{}).get('Status')=='healthy':
-                checked=run(['python3',str(path/'source/deploy/verify-site.py'),'http://127.0.0.1:4200',str(path/'site-manifest.json')],check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                checked=run(['python3','-B',str(path/'source/deploy/verify-site.py'),'http://127.0.0.1:4200',str(path/'site-manifest.json')],check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
                 if checked.returncode==0:return
         except (subprocess.CalledProcessError,AssertionError):
             pass

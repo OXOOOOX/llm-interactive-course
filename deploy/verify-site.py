@@ -14,6 +14,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+# Verification runs directly from an immutable source snapshot on the server.
+# Loading its sibling must not add __pycache__ files to that snapshot.
+sys.dont_write_bytecode = True
 
 TIMEOUT_SECONDS = 12
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024

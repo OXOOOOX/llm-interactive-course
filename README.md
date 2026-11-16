@@ -9,16 +9,22 @@
 
 ---
 
-## 🚀 Zeabur 一键部署
+## 🚀 服务器自动部署
 
-本仓库已经按 Zeabur 静态站点方式配置完成，无需填写环境变量、构建命令或启动命令。部署后的域名根路径会自动进入 **AI 产品经理实战课**。
+生产网站 [sdspeed.com.cn](https://sdspeed.com.cn) 使用自有腾讯云服务器。更新
+`OXOOOOX/llm-interactive-course` 的 `main` 分支后，GitHub Actions 自动同步源码，
+在服务器检查课程与资源、打包镜像，再切换新版本。电脑不需要一直开机。
 
-1. 将整个仓库上传到 GitHub。
-2. 在 Zeabur 新建项目，选择 **Add Service → GitHub**。
-3. 选择这个 GitHub 仓库并点击部署。
-4. 部署完成后，在服务的 **Domains** 页面使用 Zeabur 域名或绑定自己的域名。
+1. 修改课程或静态资源，检查后提交到生产仓库的 `main`。
+2. 在仓库 **Actions** 中确认检查和部署任务均成功。
+3. 打开原域名验证修改；手动运行工作流时，勾选 `activate` 才会正式上线。
 
-Zeabur 会使用根目录的 `index.html` 作为静态站点入口；`_redirects` 和 `_headers` 分别负责首页跳转与基础安全响应头。全站通过 `connect-src 'none'` 禁止浏览器发起 Fetch、XHR、WebSocket 等实时连接，仅提供静态课程内容，不调用生成式人工智能服务。后续向 GitHub 推送更新时，Zeabur 会自动重新部署。
+域名根路径继续跳转到 **AI 产品经理实战课**。`_redirects` 和 `_headers` 会在打包时
+转换为独立的 Caddy 配置。网站保留 `connect-src 'none'`，仅提供静态课程，
+不调用生成式人工智能实时服务。学习进度与笔记继续保存在原浏览器。
+
+Zeabur 的旧 GitHub 发布连接已解除，原课程分支的线上内容已接续到 `main`。
+目录、配置、检查和回退方法见 [服务器部署说明](deploy/README.md)。
 
 ---
 

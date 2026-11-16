@@ -1,0 +1,24 @@
+name: homepage
+services:
+  app:
+    image: ${HOMEPAGE_IMAGE:?Verified image required}
+    pull_policy: never
+    restart: unless-stopped
+    env_file:
+      - path: /opt/homepage/shared/runtime.env
+        format: raw
+    ports: ["127.0.0.1:4200:8080"]
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 128
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,mode=1777
+      - /config:size=8m
+      - /data:size=8m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "3"}

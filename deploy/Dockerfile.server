@@ -1,0 +1,10 @@
+ARG HOMEPAGE_RUNTIME_IMAGE
+FROM ${HOMEPAGE_RUNTIME_IMAGE}
+WORKDIR /srv/site
+COPY site/ /srv/site/
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY site-manifest.json /opt/homepage/site-manifest.json
+EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=6 CMD test "$(wget -qO- http://127.0.0.1:8080/__deploy_health)" = HOME_OK
+ENTRYPOINT ["/usr/bin/caddy"]
+CMD ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

@@ -1,5 +1,8 @@
 ARG HOMEPAGE_RUNTIME_IMAGE
 FROM ${HOMEPAGE_RUNTIME_IMAGE}
+# Re-create the executable without its old low-port file capability. This
+# service listens on 8080 and runs with all container capabilities dropped.
+RUN cat /usr/bin/caddy > /usr/bin/caddy.no-caps && chmod 755 /usr/bin/caddy.no-caps && mv /usr/bin/caddy.no-caps /usr/bin/caddy
 WORKDIR /srv/site
 COPY site/ /srv/site/
 COPY Caddyfile /etc/caddy/Caddyfile
